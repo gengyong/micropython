@@ -110,6 +110,7 @@ INC += $(addprefix -I,$(PLATFORM_INCDIR))
 LIBDIRS += $(PLATFORM_LIBDIR)
 
 CC_DEFAULT_OPTIONS = $(TargetCCOption) -DGCC_COMPILE=1 -ffunction-sections -fdata-sections
+AS_DEFAULT_OPTIONS = $(TargetCCOption) -Wa,--gdwarf2
 LD_MAP_OPTION = -Wl,--ckmap=$(BUILD)/firmware.map
 LD_LIB_OPTION = -Wl,--start-group -Wl,--end-group
 LD_DEFAULT_OPTIONS = $(ExtraLinkOption) $(LD_MAP_OPTION) $(TargetLDOption) -nostartfiles -Wl,--gc-sections -T"$(SDKPath)/ld/$(TargetBoard)/gcc_csky.ld" $(LD_LIB_OPTION) 
@@ -118,6 +119,7 @@ DFU = $(TOP)/tools/dfu.py
 PYDFU = $(TOP)/tools/pydfu.py
 
 CFLAGS = $(INC) $(CC_DEFAULT_OPTIONS) $(COPT) $(CFLAGS_MOD)
+SFLAGS = $(addprefix -I,$(PLATFORM_ASMINC)) $(AS_DEFAULT_OPTIONS)
 LDFLAGS = $(LD_DEFAULT_OPTIONS)
 else
 LD = gcc
@@ -287,6 +289,10 @@ $(BUILD)/firmware.dfu: $(BUILD)/firmware.elf
 	@ls --color=auto -Ugo $(BUILD)/firmware.elf $(BUILD)/firmware.bin
 	@./tools/postbuild.sh firmware $(SDKPath) $(BUILD) $(zip) $(sign) $(encrypt)
 
+dist: $(BUILD)/firmware.dfu
+	$(Q)make -p dist
+	copy $(BUILD)/*.fls dist/
+
 deploy: $(BUILD)/firmware.dfu
 	$(ECHO) "Writing $< to the board"
 	$(Q)$(PYTHON) $(PYDFU) -u $<
@@ -306,3 +312,7 @@ test: $(BUILD)/firmware.elf
 
 
 include $(TOP)/py/mkrules.mk
+
+$(BUILD)/%.o: %.S
+	$(ECHO) "ASM $<"
+	$(Q)$(CC) $(SFLAGS) -c -o $@ $<
