@@ -54,7 +54,7 @@ make sign=1
 
 最终看到的编译输出如下：
 
-'''
+'''bash
 firmware        [UNENCRYPT][UNSIGNED][UNZIPPED]
  *  build/firmware.bin(234420)
  -> build/firmware.img(234484)
@@ -64,7 +64,7 @@ firmware        [UNENCRYPT][UNSIGNED][UNZIPPED]
 77c293ac        build/firmware.img
 92ab06a6        ./sdk/WM_SDK_W806/tools/W806/W806_secboot.img
 ae0214ea        build/firmware_unsign.fls
-'''
+''''
 
 ## 进入 REPL
 W806 没有网络，只能通过串口连接。
