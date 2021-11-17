@@ -64,7 +64,6 @@ Makefile 文件前部， 修改这两处：
     92ab06a6        ./sdk/WM_SDK_W806/tools/W806/W806_secboot.img
     ae0214ea        build/firmware_unsign.fls
 
-
 ## 进入 REPL
 W806 没有网络，只能通过串口连接。
 打开任意串口工具(比如putty), 波特率 115200，数据位8，停止位1, 连接即可。
@@ -73,6 +72,7 @@ W806 没有网络，只能通过串口连接。
 ## 项目当前进度
 python 跑了起来，正在移植各种模块及硬件器件。
 
+发布里提供了编译好的rom供尝鲜，现在除了做算术题啥也不是，可以下载试试。
 
 # The xt804 port
 
