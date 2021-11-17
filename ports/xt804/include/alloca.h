@@ -48,4 +48,20 @@ void * _EXFUN(alloca,(size_t));
 #define SEEK_SET 0
 #endif
 
+
+// typedef int32_t time_t;
+// //typedef UINT32 clock_t;
+// typedef int32_t suseconds_t;
+
+// typedef struct xt804_timeval timeval;
+
+// struct xt804_timeval
+// {
+//     time_t        tv_sec;                  /* seconds */
+//     suseconds_t   tv_usec;                 /* microseconds */
+// };
+
 #endif
+
+#include <time.h>
+#include <stdint.h>
