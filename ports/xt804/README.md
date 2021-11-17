@@ -36,35 +36,34 @@ Makefile 文件前部， 修改这两处：
 命令行进入 ports/xt804目录下:
 
 第一次编译时，先执行以下命令，下载依赖模块：
-'''bash
-make submodules
-'''
+
+    $ make submodules
+
 
 然后， 执行下边命令编译并生成最终rom文件：
-'''bash
-make
-'''
+
+    $ make
+
 生成的文件在 ports/xt804/build 目录下, 名为 firmware.unsign.fls, 用 Upgrader tool 刷到板上就好。
 
 如果要签名的fls文件，make 时加上参数 sign=1, 如下：
-'''bash
-make sign=1
-'''
+
+    $make sign=1
+
 生成的文件名为 firmware_sign.fls。
 
 最终看到的编译输出如下：
 
-'''bash
-firmware        [UNENCRYPT][UNSIGNED][UNZIPPED]
- *  build/firmware.bin(234420)
- -> build/firmware.img(234484)
- -> build/firmware_unsign.fls(266128)
-141aa9d0        build/firmware.elf
-6225f8ed        build/firmware.bin
-77c293ac        build/firmware.img
-92ab06a6        ./sdk/WM_SDK_W806/tools/W806/W806_secboot.img
-ae0214ea        build/firmware_unsign.fls
-''''
+    firmware        [UNENCRYPT][UNSIGNED][UNZIPPED]
+    *  build/firmware.bin(234420)
+    -> build/firmware.img(234484)
+    -> build/firmware_unsign.fls(266128)
+    141aa9d0        build/firmware.elf
+    6225f8ed        build/firmware.bin
+    77c293ac        build/firmware.img
+    92ab06a6        ./sdk/WM_SDK_W806/tools/W806/W806_secboot.img
+    ae0214ea        build/firmware_unsign.fls
+
 
 ## 进入 REPL
 W806 没有网络，只能通过串口连接。
