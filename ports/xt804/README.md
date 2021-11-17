@@ -72,7 +72,7 @@ W806 没有网络，只能通过串口连接。
 ## 项目当前进度
 python 跑了起来，正在移植各种模块及硬件器件。
 
-发布里提供了编译好的rom供尝鲜，现在除了做算术题啥也不是，可以下载试试。
+[发布](https://github.com/gengyong/micropython/releases)里提供了编译好的rom供尝鲜，现在除了做算术题啥也不是，可以下载试试。
 
 # The xt804 port
 
