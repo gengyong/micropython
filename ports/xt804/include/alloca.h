@@ -63,5 +63,3 @@ void * _EXFUN(alloca,(size_t));
 
 #endif
 
-#include <time.h>
-#include <stdint.h>

@@ -264,6 +264,10 @@ CFLAGS += -DMICROPY_QSTR_EXTRA_POOL=mp_qstr_frozen_const_pool
 endif
 
 ifeq ($(CROSS), 1)
+CFLAGS += -include ./include/__fixstdheader.h
+endif
+
+ifeq ($(CROSS), 1)
 all: $(BUILD)/firmware.dfu
 else
 all: $(BUILD)/firmware.elf
