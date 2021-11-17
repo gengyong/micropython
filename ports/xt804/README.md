@@ -1,6 +1,6 @@
 
 
-#[中文说明]
+# [中文说明]
 ## 配置本地 Toolchain 和 SDK 路径
 因为某些原因，工具链和SDK需要本地设置。
 工具链到 https://occ.t-head.cn/community/download?id=3885366095506644992 下载。
@@ -54,21 +54,7 @@ make sign=1
 
 最终看到的编译输出如下：
 
-'''txt
-========================================
--rwxrwxrwx 1 11287400 Nov 17 15:43 build/firmware.elf
--rwxrwxrwx 1   234420 Nov 17 15:54 build/firmware.bin
-========================================
-Target: build/firmware
-SDK: ./sdk/WM_SDK_W806
-========================================
-prikey_sel:0 => Image Type: 0x1
-code_encrypt:0
-signature:0
-sign_pubkey_src:0 => Image Type: 0x201
-========================================
-Image Type: 0x201
-========================================
+'''
 firmware        [UNENCRYPT][UNSIGNED][UNZIPPED]
  *  build/firmware.bin(234420)
  -> build/firmware.img(234484)

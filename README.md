@@ -2,6 +2,7 @@
 
 
 # 同学们，有关 W806 (xt804 mcu) 的移植情况，请至 ports/xt804 目录下查看 README。
+[入口](https://github.com/gengyong/micropython/tree/master/ports/xt804)
 =======================
 
 The MicroPython project
