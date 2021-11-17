@@ -289,14 +289,9 @@ $(BUILD)/firmware.dfu: $(BUILD)/firmware.elf
 	@ls --color=auto -Ugo $(BUILD)/firmware.elf $(BUILD)/firmware.bin
 	@./tools/postbuild.sh firmware $(SDKPath) $(BUILD) $(zip) $(sign) $(encrypt)
 
-dist: $(BUILD)/firmware.dfu
-	$(Q)make -p dist
-	copy $(BUILD)/*.fls dist/
-
 deploy: $(BUILD)/firmware.dfu
 	$(ECHO) "Writing $< to the board"
 	$(Q)$(PYTHON) $(PYDFU) -u $<
-
 
 # Run emulation build on a POSIX system with suitable terminal settings
 run:
