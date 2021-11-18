@@ -236,7 +236,7 @@ LIB_SRC_C = $(addprefix lib/,\
 
 ifeq ($(CROSS), 1)
 SRC_C += $(wildcard $(addsuffix /*.c,$(PLATFORM_SRCDIR)))
-SRC_ASM += src/__rt_entry.S
+#SRC_ASM += src/__rt_entry.S
 SRC_ASM += $(wildcard $(addsuffix /*.S,$(PLATFORM_SRCDIR)))
 SRC_ASM += $(wildcard $(addsuffix /*.S,$(PLATFORM_ASMDIR)))
 endif

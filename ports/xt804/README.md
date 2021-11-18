@@ -16,9 +16,12 @@ minilibc 也是平头哥 CDK IDE 在用的库。
 32位 Linux: csky-elfabiv2-tools-i386-minilibc-20210423
 MinGW 环境：csky-elfabiv2-tools-mingw-minilibc-20210423
 
-SDK 到 https://www.winnermicro.com/html/1/156/158/558.html 下载。
-点开“软件资料”， 下载最新的 SDK。
-当前最新的SDK的文件名是: wm_sdk_w800_20210730.rar
+SDK 到 https://h.hlktech.com/Mobile/download/fdetail/143.html 下载。
+通用软件，下载 WM_SDK_W806(.rar)。
+
+有同学在 github 上为此 SDK 建了repo, 也可以从此处克隆。
+感谢 IOSetting 同学！
+https://github.com/IOsetting/wm-sdk-w806
 
 工具链和SDK下载好之后，解压到指定目录，然后修改 Makefile 配置工具链和SDK路径。
 
