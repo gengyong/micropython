@@ -1,5 +1,5 @@
-#ifndef _FIF0_H_
-#define _FIFO_H_
+#ifndef MPY_XT804_FIF0_H_
+#define MPY_XT804_FIF0_H_
 
 #include "wm_hal.h"
 
@@ -10,7 +10,7 @@ typedef struct fifo_t {
 	uint32_t out;
 } _fifo_str;
 
-#define min(x,y) ((x) < (y)?(x):(y))
+
 
 int FifoInit(uint8_t *fifo_addr, uint32_t fifo_size);
 

@@ -28,21 +28,11 @@ typedef uint16_t __uint16_t;
 typedef int8_t __int8_t;
 typedef uint8_t __uint8_t;
 
-
-// extra built in names to add to the global namespace
-#define MICROPY_PORT_BUILTINS \
-    { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&mp_builtin_open_obj) },
-
 // We need to provide a declaration/definition of alloca()
 #include <alloca.h>
 
 #define MICROPY_HW_BOARD_NAME "W806"
 #define MICROPY_HW_MCU_NAME "XT804"
-
-
-#define MP_STATE_PORT MP_STATE_VM
-#define MICROPY_PORT_ROOT_POINTERS \
-    const char *readline_hist[8];
 
 #define MICROPY_REPL_EVENT_DRIVEN         (0)
 
@@ -163,6 +153,10 @@ typedef uint8_t __uint8_t;
 #define MICROPY_PY_OS_DUPTERM               (1)
 #define MICROPY_PY_UWEBSOCKET               (0)
 
+// config machine modules
+#define MICROPY_PY_MACHINE                  (1)
+#define MICROPY_PY_MACHINE_BITSTREAM        (1)
+
 ///#define MICROPY_PY_THREAD                   (1)
 ///#define MICROPY_PY_THREAD_GIL               (1)
 ///#define MICROPY_PY_THREAD_GIL_VM_DIVISOR    (32)
@@ -174,6 +168,51 @@ typedef uint8_t __uint8_t;
 #define MICROPY_FATFS_LFN_CODE_PAGE         437 /* 1=SFN/ANSI 437=LFN/U.S.(OEM) */
 #define mp_type_fileio                      mp_type_vfs_fat_fileio
 #define mp_type_textio                      mp_type_vfs_fat_textio
+
+
+#if 0
+// extra built in names to add to the global namespace
+#define MICROPY_PORT_BUILTINS \
+     { MP_OBJ_NEW_QSTR(MP_QSTR_input), (mp_obj_t)&mp_builtin_input_obj }, \
+     { MP_OBJ_NEW_QSTR(MP_QSTR_open), (mp_obj_t)&mp_builtin_open_obj },
+
+// extra built in modules to add to the list of known ones
+extern const struct _mp_obj_module_t utime_module;
+extern const struct _mp_obj_module_t uos_module;
+extern const struct _mp_obj_module_t mp_module_usocket;
+extern const struct _mp_obj_module_t mp_module_machine;
+extern const struct _mp_obj_module_t mp_module_network;
+extern const struct _mp_obj_module_t mp_module_onewire;
+
+
+#define MICROPY_PORT_BUILTIN_MODULES \
+     { MP_OBJ_NEW_QSTR(MP_QSTR_utime), (mp_obj_t)&utime_module }, \
+     { MP_OBJ_NEW_QSTR(MP_QSTR_uos), (mp_obj_t)&uos_module }, \
+     { MP_OBJ_NEW_QSTR(MP_QSTR_usocket), (mp_obj_t)&mp_module_usocket }, \
+     { MP_OBJ_NEW_QSTR(MP_QSTR_machine), (mp_obj_t)&mp_module_machine }, \
+     { MP_OBJ_NEW_QSTR(MP_QSTR_network), (mp_obj_t)&mp_module_network }, \
+     { MP_OBJ_NEW_QSTR(MP_QSTR_onewire), (mp_obj_t)&mp_module_onewire }, \
+
+#endif
+
+
+#define MICROPY_PORT_BUILTINS \
+    { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&mp_builtin_open_obj) },
+
+#if 0
+extern const struct _mp_obj_module_t mp_module_machine;
+extern const struct _mp_obj_module_t mp_module_os;
+extern const struct _mp_obj_module_t mp_module_time;
+#define MICROPY_PORT_BUILTIN_MODULES \
+    { MP_ROM_QSTR(MP_QSTR_utime), MP_ROM_PTR(&mp_module_time) }, \
+    { MP_ROM_QSTR(MP_QSTR_umachine), MP_ROM_PTR(&mp_module_machine) }, \
+    { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_os) }, \
+
+#endif
+
+extern const struct _mp_obj_module_t mp_module_machine;
+#define MICROPY_PORT_BUILTIN_MODULES \
+    { MP_ROM_QSTR(MP_QSTR_umachine), MP_ROM_PTR(&mp_module_machine) }, \
 
 
 // use vfs's functions for import stat and builtin open
@@ -194,3 +233,53 @@ typedef uint8_t __uint8_t;
     } while (0);
 
 #define MICROPY_THREAD_YIELD()
+
+
+#define MICROPY_MPHALPORT_H                 "xt804_mphal.h"
+
+
+//----------------------------------------------------------
+#define MP_STATE_PORT MP_STATE_VM
+#define MICROPY_PORT_ROOT_POINTERS \
+    const char *readline_hist[8]; \
+    \
+    /*mp_obj_t pyb_hid_report_desc; */\
+    \
+    /*mp_obj_t pyb_config_main; */\
+    \
+    /*mp_obj_t pyb_switch_callback; */\
+    \
+    /*mp_obj_t pin_class_mapper; */\
+    /*mp_obj_t pin_class_map_dict; */\
+    \
+    /*mp_obj_t pyb_extint_callback[PYB_EXTI_NUM_VECTORS]; */\
+    \
+    /* pointers to all Timer objects (if they have been created) */ \
+    /*struct _pyb_timer_obj_t *pyb_timer_obj_all[MICROPY_HW_MAX_TIMER]; */\
+    \
+    /* stdio is repeated on this UART object if it's not null */ \
+    /*struct _pyb_uart_obj_t *pyb_stdio_uart; */\
+    \
+    /* pointers to all UART objects (if they have been created) */ \
+    /*struct _pyb_uart_obj_t *pyb_uart_obj_all[MICROPY_HW_MAX_UART + MICROPY_HW_MAX_LPUART]; */\
+    \
+    /* pointers to all CAN objects (if they have been created) */ \
+    /*struct _pyb_can_obj_t *pyb_can_obj_all[MICROPY_HW_MAX_CAN]; */\
+    \
+    /* pointers to all I2S objects (if they have been created) */ \
+    /*struct _machine_i2s_obj_t *machine_i2s_obj[MICROPY_HW_MAX_I2S]; */\
+    \
+    /* USB_VCP IRQ callbacks (if they have been set) */ \
+    /*mp_obj_t pyb_usb_vcp_irq[MICROPY_HW_USB_CDC_NUM]; */\
+    \
+    /* list of registered NICs */ \
+    /*mp_obj_list_t mod_network_nic_list; */\
+    \
+    /* root pointers for sub-systems */ \
+    /*MICROPY_PORT_ROOT_POINTER_MBEDTLS */\
+    /*MICROPY_PORT_ROOT_POINTER_BLUETOOTH_NIMBLE */\
+    /*MICROPY_PORT_ROOT_POINTER_BLUETOOTH_BTSTACK */\
+    \
+    /* root pointers defined by a board */ \
+    /*    MICROPY_BOARD_ROOT_POINTERS */\
+

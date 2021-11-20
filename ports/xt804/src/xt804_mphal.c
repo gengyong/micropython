@@ -1,35 +1,6 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * Development of the code in this file was sponsored by Microbric Pty Ltd
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2014 Damien P. George
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
-
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
-
 
 #include "py/obj.h"
 #include "py/objstr.h"
@@ -39,7 +10,48 @@
 #include "extmod/misc.h"
 #include "shared/timeutils/timeutils.h"
 #include "shared/runtime/pyexec.h"
-#include "mphalport.h"
+
+#include "xt804_mphal.h"
+
+//================================================
+// Time
+#if 0 // GengYong: use xt804 timer.
+void mp_hal_delay_us(uint32_t us) {
+    // these constants are tested for a 240MHz clock
+    const uint32_t this_overhead = 5;
+    const uint32_t pend_overhead = 150;
+
+    // return if requested delay is less than calling overhead
+    if (us < this_overhead) {
+        return;
+    }
+    us -= this_overhead;
+
+    uint64_t t0 = esp_timer_get_time();
+    for (;;) {
+        uint64_t dt = esp_timer_get_time() - t0;
+        if (dt >= us) {
+            return;
+        }
+        if (dt + pend_overhead < us) {
+            // we have enough time to service pending events
+            // (don't use MICROPY_EVENT_POLL_HOOK because it also yields)
+            mp_handle_pending(true);
+        }
+    }
+}
+#endif
+
+uint64_t mp_hal_time_ns(void) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    uint64_t ns = tv.tv_sec * 1000000000ULL;
+    ns += (uint64_t)tv.tv_usec * 1000ULL;
+    return ns;
+}
+
+
+
 //#include "usb.h"
 //#include "usb_serial_jtag.h"
 
@@ -80,13 +92,13 @@
 //     }
 // }
 
-uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
-    uintptr_t ret = 0;
-    // if ((poll_flags & MP_STREAM_POLL_RD) && stdin_ringbuf.iget != stdin_ringbuf.iput) {
-    //     ret |= MP_STREAM_POLL_RD;
-    // }
-    return ret;
-}
+// uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
+//     uintptr_t ret = 0;
+//     // if ((poll_flags & MP_STREAM_POLL_RD) && stdin_ringbuf.iget != stdin_ringbuf.iput) {
+//     //     ret |= MP_STREAM_POLL_RD;
+//     // }
+//     return ret;
+// }
 
 // int mp_hal_stdin_rx_chr(void) {
 //     for (;;) {
@@ -198,40 +210,40 @@ uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
 //     }
 // }
 
-mp_uint_t mp_hal_ticks_ms(void) {
-    return 0;
-}
+// mp_uint_t mp_hal_ticks_ms(void) {
+//     return 0;
+// }
 
 
-void mp_hal_pin_input(mp_hal_pin_obj_t pin) {
-    // TODO:
-}
+// void mp_hal_pin_input(mp_hal_pin_obj_t pin) {
+//     // TODO:
+// }
 
-void mp_hal_pin_output(mp_hal_pin_obj_t pin) {
-   // TODO:
-}
+// void mp_hal_pin_output(mp_hal_pin_obj_t pin) {
+//    // TODO:
+// }
 
-void mp_hal_pin_open_drain(mp_hal_pin_obj_t pin) {
-    // TODO:
-}
+// void mp_hal_pin_open_drain(mp_hal_pin_obj_t pin) {
+//     // TODO:
+// }
 
-void mp_hal_pin_od_high(mp_hal_pin_obj_t pin) {
-    // TODO:
-    //gpio_set_level(pin, 1);
-}
+// void mp_hal_pin_od_high(mp_hal_pin_obj_t pin) {
+//     // TODO:
+//     //gpio_set_level(pin, 1);
+// }
 
-void mp_hal_pin_write(mp_hal_pin_obj_t pin, int v) {
-    // TODO:
-    //gpio_set_level(pin, v);
-}
+// void mp_hal_pin_write(mp_hal_pin_obj_t pin, int v) {
+//     // TODO:
+//     //gpio_set_level(pin, v);
+// }
 
-int mp_hal_pin_read(mp_hal_pin_obj_t pin) {
-    //return gpio_get_level(pin);
-    // TODO:
-    return 0;
-}
+// int mp_hal_pin_read(mp_hal_pin_obj_t pin) {
+//     //return gpio_get_level(pin);
+//     // TODO:
+//     return 0;
+// }
 
-void mp_hal_pin_od_low(mp_hal_pin_obj_t pin) {
-    // TODO:
-    //gpio_set_level(pin, 0);
-}
+// void mp_hal_pin_od_low(mp_hal_pin_obj_t pin) {
+//     // TODO:
+//     //gpio_set_level(pin, 0);
+// }

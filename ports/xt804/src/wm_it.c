@@ -19,8 +19,3 @@ __attribute__((isr)) void GPIOB_IRQHandler(void)
 	HAL_GPIO_EXTI_IRQHandler(GPIOB, GPIO_PIN_5);
 }
 
-extern UART_HandleTypeDef huart;
-__attribute__((isr)) void UART0_IRQHandler(void)
-{
-	HAL_UART_IRQHandler(&huart);
-}

@@ -1,6 +1,8 @@
 
-#include "fifo.h"
+#include "hal_uart0_fifo.h"
 #include "string.h"
+
+#define min(x,y) ((x) < (y)?(x):(y))
 
 _fifo_str fifo_str;
 

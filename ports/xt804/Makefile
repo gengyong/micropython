@@ -38,7 +38,7 @@ endif
 
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h
-
+#QSTR_GLOBAL_DEPENDENCIES = mpconfigboard.h
 ########################################################################################
 # MicroPython feature configurations
 MICROPY_ROM_TEXT_COMPRESSION ?= 1
@@ -59,7 +59,7 @@ include $(TOP)/py/py.mk
 GIT_SUBMODULES = lib/axtls lib/berkeley-db-1.xx lib/lwip
 
 ########################################################################################
-INC += -I. -I./include
+INC += -I. -I./include -I./boards/$(TargetBoard)/include -I./src
 INC += -I$(TOP)
 INC += -I$(BUILD)
 
@@ -174,7 +174,7 @@ SRC_CXX += \
 
 SRC_ASM =
 
-#	modlwip.c 
+# modlwip.c 
 
 EXTMOD_SRC_C +=extmod/modonewire.c
 EXTMOD_SRC_C +=extmod/modurandom.c
@@ -196,6 +196,19 @@ EXTMOD_SRC_C +=extmod/vfs_fat_file.c
 EXTMOD_SRC_C +=extmod/vfs_fat_diskio.c
 EXTMOD_SRC_C +=extmod/vfs_blockdev.c
 EXTMOD_SRC_C +=extmod/uos_dupterm.c
+EXTMOD_SRC_C +=extmod/machine_bitstream.c
+EXTMOD_SRC_C +=extmod/machine_i2c.c
+EXTMOD_SRC_C +=extmod/machine_mem.c
+EXTMOD_SRC_C +=extmod/machine_pinbase.c
+EXTMOD_SRC_C +=extmod/machine_pulse.c
+EXTMOD_SRC_C +=extmod/machine_pwm.c
+EXTMOD_SRC_C +=extmod/machine_signal.c
+EXTMOD_SRC_C +=extmod/machine_spi.c
+EXTMOD_SRC_C +=extmod/virtpin.c
+
+
+
+
 
 
 DRIVERS_SRC_C +=drivers/bus/softspi.c
@@ -279,7 +292,7 @@ $(BUILD)/firmware.elf: $(OBJ)
 	$(ECHO) "LINK $@"
 	$(Q)$(LD) $(LDFLAGS) -o $@ $^ $(addprefix -L,$(LIBDIRS)) $(addprefix -l,$(LIBS))
 	$(Q)$(SIZE) $@
-
+	$(Q)$(ECHO) ========================================
 
 zip := $(if $(zip),$(zip),0)
 sign := $(if $(sign),$(sign),0)
