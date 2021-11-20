@@ -118,7 +118,6 @@ static_qstr_list = [
     "args",
     "bool",
     "builtins",
-    "buffer",
     "bytearray",
     "bytecode",
     "bytes",
