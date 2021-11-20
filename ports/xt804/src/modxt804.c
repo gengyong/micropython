@@ -29,28 +29,43 @@
 
 #include <time.h>
 #include <sys/time.h>
-#include "soc/rtc_cntl_reg.h"
-#include "driver/gpio.h"
-#include "driver/adc.h"
-#include "esp_heap_caps.h"
-#include "multi_heap.h"
+//#include "soc/rtc_cntl_reg.h"
+//#include "driver/gpio.h"
+//#include "driver/adc.h"
+//#include "esp_heap_caps.h"
+//#include "multi_heap.h"
 
 #include "py/nlr.h"
 #include "py/obj.h"
 #include "py/runtime.h"
 #include "py/mphal.h"
 #include "shared/timeutils/timeutils.h"
-#include "modmachine.h"
-#include "machine_rtc.h"
-#include "modesp32.h"
+
+#include "modxt804.h"
+
+//#include "machine_rtc.h"
+//#include "modesp32.h"
 
 // These private includes are needed for idf_heap_info.
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 3, 0)
-#define MULTI_HEAP_FREERTOS
-#include "../multi_heap_platform.h"
-#endif
-#include "../heap_private.h"
+// #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 3, 0)
+// #define MULTI_HEAP_FREERTOS
+// #include "../multi_heap_platform.h"
+// #endif
+// #include "../heap_private.h"
 
+
+extern int g_colorful_print;
+STATIC mp_obj_t xt804_toggle_color_print(size_t n_args, const mp_obj_t *args) {
+    if (n_args == 0) {
+        g_colorful_print = !g_colorful_print;
+    } else {
+        g_colorful_print = mp_obj_is_true(args[0]);
+    }
+    return mp_obj_new_bool(g_colorful_print);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(xt804_toggle_color_print_obj, 0, 1, xt804_toggle_color_print);
+
+#if 0
 STATIC mp_obj_t esp32_wake_on_touch(const mp_obj_t wake) {
 
     if (machine_rtc_config.ext0_pin != -1) {
@@ -62,7 +77,9 @@ STATIC mp_obj_t esp32_wake_on_touch(const mp_obj_t wake) {
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(esp32_wake_on_touch_obj, esp32_wake_on_touch);
+#endif
 
+#if 0
 STATIC mp_obj_t esp32_wake_on_ext0(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
     if (machine_rtc_config.wake_on_touch) {
@@ -94,7 +111,9 @@ STATIC mp_obj_t esp32_wake_on_ext0(size_t n_args, const mp_obj_t *pos_args, mp_m
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(esp32_wake_on_ext0_obj, 0, esp32_wake_on_ext0);
+#endif
 
+#if 0
 STATIC mp_obj_t esp32_wake_on_ext1(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum {ARG_pins, ARG_level};
     const mp_arg_t allowed_args[] = {
@@ -130,7 +149,9 @@ STATIC mp_obj_t esp32_wake_on_ext1(size_t n_args, const mp_obj_t *pos_args, mp_m
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(esp32_wake_on_ext1_obj, 0, esp32_wake_on_ext1);
+#endif
 
+#if 0
 #if CONFIG_IDF_TARGET_ESP32
 
 #include "soc/sens_reg.h"
@@ -158,7 +179,9 @@ STATIC mp_obj_t esp32_hall_sensor(void) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(esp32_hall_sensor_obj, esp32_hall_sensor);
 
 #endif
+#endif
 
+#if 0
 STATIC mp_obj_t esp32_idf_heap_info(const mp_obj_t cap_in) {
     mp_int_t cap = mp_obj_get_int(cap_in);
     multi_heap_info_t info;
@@ -180,36 +203,40 @@ STATIC mp_obj_t esp32_idf_heap_info(const mp_obj_t cap_in) {
     return heap_list;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(esp32_idf_heap_info_obj, esp32_idf_heap_info);
+#endif
 
-STATIC const mp_rom_map_elem_t esp32_module_globals_table[] = {
-    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_esp32) },
 
-    { MP_ROM_QSTR(MP_QSTR_wake_on_touch), MP_ROM_PTR(&esp32_wake_on_touch_obj) },
-    { MP_ROM_QSTR(MP_QSTR_wake_on_ext0), MP_ROM_PTR(&esp32_wake_on_ext0_obj) },
-    { MP_ROM_QSTR(MP_QSTR_wake_on_ext1), MP_ROM_PTR(&esp32_wake_on_ext1_obj) },
-    #if CONFIG_IDF_TARGET_ESP32
-    { MP_ROM_QSTR(MP_QSTR_raw_temperature), MP_ROM_PTR(&esp32_raw_temperature_obj) },
-    { MP_ROM_QSTR(MP_QSTR_hall_sensor), MP_ROM_PTR(&esp32_hall_sensor_obj) },
-    #endif
-    { MP_ROM_QSTR(MP_QSTR_idf_heap_info), MP_ROM_PTR(&esp32_idf_heap_info_obj) },
+STATIC const mp_rom_map_elem_t xt804_module_globals_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_xt804) },
 
-    { MP_ROM_QSTR(MP_QSTR_NVS), MP_ROM_PTR(&esp32_nvs_type) },
-    { MP_ROM_QSTR(MP_QSTR_Partition), MP_ROM_PTR(&esp32_partition_type) },
-    { MP_ROM_QSTR(MP_QSTR_RMT), MP_ROM_PTR(&esp32_rmt_type) },
-    #if CONFIG_IDF_TARGET_ESP32
-    { MP_ROM_QSTR(MP_QSTR_ULP), MP_ROM_PTR(&esp32_ulp_type) },
-    #endif
+    { MP_ROM_QSTR(MP_QSTR_color_print), MP_ROM_PTR(&xt804_toggle_color_print_obj) },
+    //-- GengYong: TODO:
+    //{ MP_ROM_QSTR(MP_QSTR_wake_on_touch), MP_ROM_PTR(&esp32_wake_on_touch_obj) },
+    //{ MP_ROM_QSTR(MP_QSTR_wake_on_ext0), MP_ROM_PTR(&esp32_wake_on_ext0_obj) },
+    //{ MP_ROM_QSTR(MP_QSTR_wake_on_ext1), MP_ROM_PTR(&esp32_wake_on_ext1_obj) },
+    //#if CONFIG_IDF_TARGET_ESP32
+    //{ MP_ROM_QSTR(MP_QSTR_raw_temperature), MP_ROM_PTR(&esp32_raw_temperature_obj) },
+    //{ MP_ROM_QSTR(MP_QSTR_hall_sensor), MP_ROM_PTR(&esp32_hall_sensor_obj) },
+    //#endif
+    //{ MP_ROM_QSTR(MP_QSTR_idf_heap_info), MP_ROM_PTR(&esp32_idf_heap_info_obj) },
 
-    { MP_ROM_QSTR(MP_QSTR_WAKEUP_ALL_LOW), MP_ROM_FALSE },
-    { MP_ROM_QSTR(MP_QSTR_WAKEUP_ANY_HIGH), MP_ROM_TRUE },
+    //{ MP_ROM_QSTR(MP_QSTR_NVS), MP_ROM_PTR(&esp32_nvs_type) },
+    { MP_ROM_QSTR(MP_QSTR_Partition), MP_ROM_PTR(&xt804_partition_type) },
+    //{ MP_ROM_QSTR(MP_QSTR_RMT), MP_ROM_PTR(&esp32_rmt_type) },
+    //#if CONFIG_IDF_TARGET_ESP32
+    //{ MP_ROM_QSTR(MP_QSTR_ULP), MP_ROM_PTR(&esp32_ulp_type) },
+    //#endif
 
-    { MP_ROM_QSTR(MP_QSTR_HEAP_DATA), MP_ROM_INT(MALLOC_CAP_8BIT) },
-    { MP_ROM_QSTR(MP_QSTR_HEAP_EXEC), MP_ROM_INT(MALLOC_CAP_EXEC) },
+    //{ MP_ROM_QSTR(MP_QSTR_WAKEUP_ALL_LOW), MP_ROM_FALSE },
+    //{ MP_ROM_QSTR(MP_QSTR_WAKEUP_ANY_HIGH), MP_ROM_TRUE },
+
+    //{ MP_ROM_QSTR(MP_QSTR_HEAP_DATA), MP_ROM_INT(MALLOC_CAP_8BIT) },
+    //{ MP_ROM_QSTR(MP_QSTR_HEAP_EXEC), MP_ROM_INT(MALLOC_CAP_EXEC) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(esp32_module_globals, esp32_module_globals_table);
+STATIC MP_DEFINE_CONST_DICT(xt804_module_globals, xt804_module_globals_table);
 
-const mp_obj_module_t esp32_module = {
+const mp_obj_module_t xt804_module = {
     .base = { &mp_type_module },
-    .globals = (mp_obj_dict_t *)&esp32_module_globals,
+    .globals = (mp_obj_dict_t *)&xt804_module_globals,
 };

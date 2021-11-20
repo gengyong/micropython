@@ -1,4 +1,4 @@
-import esp
+import xt804
 import uctypes
 import network
 import lwip
@@ -6,8 +6,9 @@ import lwip
 
 def main():
 
+    '''
     ROM = uctypes.bytearray_at(0x40200000, 16)
-    fid = esp.flash_id()
+    fid = xt804.flash_id()
 
     print("FlashROM:")
     print("Flash ID: %x (Vendor: %x Device: %x)" % (fid, fid & 0xFF, fid & 0xFF00 | fid >> 16))
@@ -21,7 +22,7 @@ def main():
         % (ROM[3], SZ_MAP.get(ROM[3] >> 4, "?"), FREQ_MAP.get(ROM[3] & 0xF))
     )
     print("Firmware checksum:")
-    print(esp.check_fw())
+    print(xt804.check_fw())
 
     print("\nNetworking:")
     print("STA ifconfig:", network.WLAN(network.STA_IF).ifconfig())
@@ -30,9 +31,9 @@ def main():
     for i, comm in enumerate(
         ("1,2 TX", "4 Mngmt TX(len: 0x41-0x100)", "5 Mngmt TX (len: 0-0x40)", "7", "8 RX")
     ):
-        print("%d: %d (%s)" % (i, esp.esf_free_bufs(i), comm))
+        print("%d: %d (%s)" % (i, xt804.esf_free_bufs(i), comm))
     print("lwIP PCBs:")
     lwip.print_pcbs()
-
+    '''
 
 main()

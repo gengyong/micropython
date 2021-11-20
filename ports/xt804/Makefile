@@ -45,7 +45,6 @@ MICROPY_ROM_TEXT_COMPRESSION ?= 1
 MICROPY_PY_USSL = 1
 MICROPY_SSL_AXTLS = 1
 
-
 AXTLS_DEFS_EXTRA = -Dabort=abort_ -DRT_MAX_PLAIN_LENGTH=1024 -DRT_EXTRA=4096
 BTREE_DEFS_EXTRA = -DDEFPSIZE=1024 -DMINCACHE=3
 
@@ -114,6 +113,10 @@ AS_DEFAULT_OPTIONS = $(TargetCCOption) -Wa,--gdwarf2
 LD_MAP_OPTION = -Wl,--ckmap=$(BUILD)/firmware.map
 LD_LIB_OPTION = -Wl,--start-group -Wl,--end-group
 LD_DEFAULT_OPTIONS = $(ExtraLinkOption) $(LD_MAP_OPTION) $(TargetLDOption) -nostartfiles -Wl,--gc-sections -T"$(SDKPath)/ld/$(TargetBoard)/gcc_csky.ld" $(LD_LIB_OPTION) 
+
+ifeq ($(prod),)
+CC_DEFAULT_OPTIONS +=-DDEBUG
+endif
 
 DFU = $(TOP)/tools/dfu.py
 PYDFU = $(TOP)/tools/pydfu.py
@@ -205,6 +208,7 @@ EXTMOD_SRC_C +=extmod/machine_pwm.c
 EXTMOD_SRC_C +=extmod/machine_signal.c
 EXTMOD_SRC_C +=extmod/machine_spi.c
 EXTMOD_SRC_C +=extmod/virtpin.c
+EXTMOD_SRC_C +=extmod/utime_mphal.c
 
 
 

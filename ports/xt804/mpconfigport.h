@@ -84,7 +84,7 @@ typedef uint8_t __uint8_t;
 #define MICROPY_VFS                         (1)
 #define MICROPY_VFS_FAT                     (1)
 #define MICROPY_VFS_POSIX_FILE              (0)
-
+#define MICROPY_PY_SYS_PLATFORM             "mpy-xt804"
 
 // control over Python builtins
 #define MICROPY_PY_FUNCTION_ATTRS           (1)
@@ -118,6 +118,7 @@ typedef uint8_t __uint8_t;
 #define MICROPY_PY_BUILTINS_INPUT           (1)
 #define MICROPY_PY_BUILTINS_MIN_MAX         (1)
 #define MICROPY_PY_BUILTINS_POW3            (1)
+#define MICROPY_PY_BUILTINS_FLOAT           (1)
 #define MICROPY_PY_BUILTINS_HELP            (1)
 #define MICROPY_PY_BUILTINS_HELP_TEXT       xt804_help_text
 #define MICROPY_PY_BUILTINS_HELP_MODULES    (1)
@@ -157,9 +158,11 @@ typedef uint8_t __uint8_t;
 #define MICROPY_PY_MACHINE                  (1)
 #define MICROPY_PY_MACHINE_BITSTREAM        (1)
 
+
 ///#define MICROPY_PY_THREAD                   (1)
 ///#define MICROPY_PY_THREAD_GIL               (1)
 ///#define MICROPY_PY_THREAD_GIL_VM_DIVISOR    (32)
+
 
 // fatfs configuration
 #define MICROPY_FATFS_ENABLE_LFN            (1)
@@ -169,6 +172,9 @@ typedef uint8_t __uint8_t;
 #define mp_type_fileio                      mp_type_vfs_fat_fileio
 #define mp_type_textio                      mp_type_vfs_fat_textio
 
+#ifndef MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE
+#define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (1)
+#endif
 
 #if 0
 // extra built in names to add to the global namespace
@@ -210,9 +216,16 @@ extern const struct _mp_obj_module_t mp_module_time;
 
 #endif
 
+extern const struct _mp_obj_module_t utime_module;
+extern const struct _mp_obj_module_t uos_module;;
 extern const struct _mp_obj_module_t mp_module_machine;
+extern const struct _mp_obj_module_t xt804_module;
 #define MICROPY_PORT_BUILTIN_MODULES \
+    { MP_ROM_QSTR(MP_QSTR_utime), (mp_obj_t)&utime_module }, \
+    { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&uos_module) }, \
+    { MP_ROM_QSTR(MP_QSTR_xt804), MP_ROM_PTR(&xt804_module) }, \
     { MP_ROM_QSTR(MP_QSTR_umachine), MP_ROM_PTR(&mp_module_machine) }, \
+    
 
 
 // use vfs's functions for import stat and builtin open
@@ -235,13 +248,14 @@ extern const struct _mp_obj_module_t mp_module_machine;
 #define MICROPY_THREAD_YIELD()
 
 
-#define MICROPY_MPHALPORT_H                 "xt804_mphal.h"
+#define MICROPY_MPHALPORT_H                 "mphalport.h"
 
 
 //----------------------------------------------------------
 #define MP_STATE_PORT MP_STATE_VM
 #define MICROPY_PORT_ROOT_POINTERS \
     const char *readline_hist[8]; \
+    mp_obj_t machine_pin_irq_handler[44]; \
     \
     /*mp_obj_t pyb_hid_report_desc; */\
     \

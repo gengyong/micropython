@@ -25,14 +25,16 @@ typedef GPIO_TypeDef pin_gpio_t;
 typedef struct _machine_pin_obj_t {
     mp_obj_base_t base;
     pin_gpio_t * gpio;
-    uint8_t      pin;
+    uint32_t     pin;
+    uint8_t      feature;
     uint8_t      id;
 } machine_pin_obj_t;
 
 typedef struct _machine_pin_irq_obj_t {
     mp_obj_base_t base;
     pin_gpio_t * gpio;
-    uint8_t      pin;
+    uint32_t     pin;
+    uint8_t      feature;
     uint8_t      id;
 } machine_pin_irq_obj_t;
 

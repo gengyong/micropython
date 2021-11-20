@@ -33,6 +33,7 @@
 #include "py/runtime.h"
 #include "shared/timeutils/timeutils.h"
 #include "extmod/utime_mphal.h"
+#include "hal_common.h"
 
 STATIC mp_obj_t time_localtime(size_t n_args, const mp_obj_t *args) {
     timeutils_struct_time_t tm;
@@ -76,8 +77,10 @@ STATIC mp_obj_t time_mktime(mp_obj_t tuple) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(time_mktime_obj, time_mktime);
 
 STATIC mp_obj_t time_time(void) {
+    TDEBUG("time_time");
     struct timeval tv;
     gettimeofday(&tv, NULL);
+    TDEBUG("gettimeofday: %l", tv.tv_sec);
     return mp_obj_new_int(tv.tv_sec);
 }
 MP_DEFINE_CONST_FUN_OBJ_0(time_time_obj, time_time);

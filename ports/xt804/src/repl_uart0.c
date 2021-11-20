@@ -20,7 +20,7 @@
 #include "mpy_hal_boot.h"
 #include "libc_port.h"
 #include "hal_common.h"
-#include "xt804_mphal.h"
+#include "mphalport.h"
 #include "repl_uart0.h"
 
 
@@ -29,7 +29,7 @@
 //===========================================
 
 //#define HEAP_MEM_SIZE ((288-8) * 1024)
-#define HEAP_MEM_SIZE ((288-8) * 1024)
+#define HEAP_MEM_SIZE ((288-12) * 1024)
 
 #define V_SRAM_START  (0x20000000)
 #define D_SRAM_START  (0x20000100)
@@ -56,9 +56,13 @@ void gc_collect(void) {
     //gc_dump_info();
     gc_info_t info;
     gc_info(&info);
-    wm_printf("\r\n\x1b[37;44m[GC]\x1b[0m\x1b[94m total: %u, used: %u, free: %u",
+    wm_printf(g_colorful_print ? 
+        "\r\n\x1b[37;44m[GC]\x1b[0m\x1b[94m total: %u, used: %u, free: %u"
+        : "\r\n[GC] total:%u, used: %u, free: %u",
         (uint)info.total, (uint)info.used, (uint)info.free);
-    wm_printf("\r\n\x1b[37;44m[GC]\x1b[0m\x1b[94m No. of 1-blocks: %u, 2-blocks: %u, max blk sz: %u, max free sz: %u\x1b[0m\r\n",
+    wm_printf(g_colorful_print ?
+        "\r\n\x1b[37;44m[GC]\x1b[0m\x1b[94m No. of 1-blocks: %u, 2-blocks: %u, max blk sz: %u, max free sz: %u\x1b[0m\r\n"
+        : "\r\n[GC] No. of 1-blocks: %u, 2-blocks: %u, max blk sz: %u, max free sz: %u\r\n",
         (uint)info.num_1block, (uint)info.num_2block, (uint)info.max_block, (uint)info.max_free);
 #endif
 }
@@ -113,24 +117,24 @@ void repl_listen_uart0() {
     mpy_hal_startup();
     session_startup();
 
-    hal_log("STACK TOP:0x%x\r\nHEAP: [0x%p:0x%p]\r\nHEAP SIZE: 0x%x", STACK_TOP, HEAP_MEM, HEAP_MEM + sizeof(HEAP_MEM), sizeof(HEAP_MEM));
-    hal_log("ready enter loop.");
+    TLOG("STACK TOP:0x%x HEAP: [0x%p - 0x%p] SIZE: 0x%x(%dKB)", STACK_TOP, HEAP_MEM, HEAP_MEM + sizeof(HEAP_MEM), sizeof(HEAP_MEM), sizeof(HEAP_MEM)>>10);
+    TLOG("ready enter loop.");
 
     mp_hal_stdout_tx_str("\r\n");
     for (;;) {
         for (;;) {
-            //hal_log("loop.");
+            //TDEBUG("loop.");
             if (pyexec_mode_kind == PYEXEC_MODE_RAW_REPL) {
-                //hal_log("ready enter raw repl.");
+                //TDEBUG("ready enter raw repl.");
                 if (pyexec_raw_repl() != 0) {
-                    //hal_warn("raw repl force quit.");
+                    //TDEBUG("raw repl force quit.");
                     soft_reset();
                     break;
                 }
             } else {
-                //hal_log("ready enter friendly repl.");
+                //TDEBUG("ready enter friendly repl.");
                 if (pyexec_friendly_repl() != 0) {
-                    //hal_warn("friendly repl force quit.. reset.");
+                    //TDEBUG("friendly repl force quit.. reset.");
                     soft_reset();
                     break;
                 }
@@ -138,12 +142,11 @@ void repl_listen_uart0() {
         }
     }
 
-    hal_warn("Quit.");
+    TWARN("Quit.");
     mp_hal_delay_ms(10); // allow UART to flush output
 
     session_terminate();
     mpy_hal_terminate();
 
 }
-
 

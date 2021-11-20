@@ -6,6 +6,7 @@
  * The MIT License (MIT)
  *
  * Copyright (c) 2014 Damien P. George
+ * Copyright (c) 2021 Geng Yong
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,8 +27,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef INCLUDED_XT804_MPHAL_H
-#define INCLUDED_XT804_MPHAL_H
+#ifndef INCLUDED_MPHALPORT_H
+#define INCLUDED_MPHALPORT_H
 
 #include <wm_cpu.h>
 #include <wm_gpio.h>
@@ -138,6 +139,9 @@ void mp_hal_get_mac_ascii(int idx, size_t chr_off, size_t chr_len, char *dest);
 //================================================
 #include "shared/runtime/interrupt_char.h"
 
+//================================================
+#include "py/ringbuf.h"
+extern ringbuf_t stdin_ringbuf;
 
 
 
@@ -254,4 +258,4 @@ static inline void mp_hal_pin_write(mp_hal_pin_obj_t pin, int v) {
 // int mp_hal_pin_read(mp_hal_pin_obj_t pin);
 // void mp_hal_pin_od_low(mp_hal_pin_obj_t pin);
 
-#endif // INCLUDED_XT804_MPHAL_H
+#endif // INCLUDED_MPHALPORT_H

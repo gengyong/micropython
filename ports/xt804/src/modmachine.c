@@ -49,8 +49,7 @@
 #include "extmod/machine_spi.h"
 #include "modmachine.h"
 //#include "machine_rtc.h"
-
-#if MICROPY_PY_MACHINE
+#include "hal_common.h"
 
 typedef enum {
     MP_PWRON_RESET = 1,
@@ -69,33 +68,19 @@ STATIC bool is_soft_reset = 0;
 STATIC mp_obj_t machine_freq(size_t n_args, const mp_obj_t *args) {
     if (n_args == 0) {
         // get
-        //return mp_obj_new_int(esp_clk_cpu_freq());
-        return mp_obj_new_int(240000000);
+        wm_sys_clk clk;
+        SystemClock_Get(&clk);
+        return mp_obj_new_int(clk.cpuclk * 1000000);
     } else {
         // set
-        // mp_int_t freq = mp_obj_get_int(args[0]) / 1000000;
-        // if (freq != 20 && freq != 40 && freq != 80 && freq != 160 && freq != 240) {
-        //     mp_raise_ValueError(MP_ERROR_TEXT("frequency must be 20MHz, 40MHz, 80Mhz, 160MHz or 240MHz"));
-        // }
-        // #if CONFIG_IDF_TARGET_ESP32
-        // esp_pm_config_esp32_t pm;
-        // #elif CONFIG_IDF_TARGET_ESP32C3
-        // esp_pm_config_esp32c3_t pm;
-        // #elif CONFIG_IDF_TARGET_ESP32S2
-        // esp_pm_config_esp32s2_t pm;
-        // #elif CONFIG_IDF_TARGET_ESP32S3
-        // esp_pm_config_esp32s3_t pm;
-        // #endif
-        // pm.max_freq_mhz = freq;
-        // pm.min_freq_mhz = freq;
-        // pm.light_sleep_enable = false;
-        // esp_err_t ret = esp_pm_configure(&pm);
-        // if (ret != ESP_OK) {
-        //     mp_raise_ValueError(NULL);
-        // }
-        // while (esp_clk_cpu_freq() != freq * 1000000) {
-        //     vTaskDelay(1);
-        // }
+        mp_int_t freq = mp_obj_get_int(args[0]) / 1000000;
+        if (freq != 40 && freq != 80 && freq != 120 && freq != 160 && freq != 240) {
+            mp_raise_ValueError(MP_ERROR_TEXT("frequency must be 40MHz, 80Mhz, 120Mhz, 160MHz or 240MHz"));
+        } else {
+            TLOG("Set System Clock Freq to %uMhz", freq);
+            uint32_t askclk = W805_PLL_CLK_MHZ / freq;
+            SystemClock_Config(askclk);
+        }
         return mp_const_none;
     }
 }
@@ -258,7 +243,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_mem16), MP_ROM_PTR(&machine_mem16_obj) },
     { MP_ROM_QSTR(MP_QSTR_mem32), MP_ROM_PTR(&machine_mem32_obj) },
 
-    //{ MP_ROM_QSTR(MP_QSTR_freq), MP_ROM_PTR(&machine_freq_obj) },
+    { MP_ROM_QSTR(MP_QSTR_freq), MP_ROM_PTR(&machine_freq_obj) },
     //{ MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&machine_reset_obj) },
     //{ MP_ROM_QSTR(MP_QSTR_soft_reset), MP_ROM_PTR(&machine_soft_reset_obj) },
     //{ MP_ROM_QSTR(MP_QSTR_unique_id), MP_ROM_PTR(&machine_unique_id_obj) },
@@ -330,4 +315,3 @@ const mp_obj_module_t mp_module_machine = {
     .globals = (mp_obj_dict_t *)&machine_module_globals,
 };
 
-#endif // MICROPY_PY_MACHINE

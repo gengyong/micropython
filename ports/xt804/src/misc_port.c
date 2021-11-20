@@ -1,6 +1,6 @@
 #include <time.h>
 
-#include "xt804_mphal.h"
+#include "mphalport.h"
 
  #undef ntohl
 uint32_t ntohl(uint32_t netlong) {

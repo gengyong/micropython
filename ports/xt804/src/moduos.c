@@ -29,8 +29,6 @@
 
 #include <string.h>
 
-#include "esp_system.h"
-
 #include "py/objstr.h"
 #include "py/runtime.h"
 #include "py/mperrno.h"
@@ -69,6 +67,12 @@ STATIC mp_obj_t os_uname(void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(os_uname_obj, os_uname);
 
+static uint32_t g_seed;
+static inline uint32_t fastrand() { 
+  g_seed = (214013*g_seed+2531011); 
+  return (g_seed>>16)&0x7FFF; 
+} 
+
 STATIC mp_obj_t os_urandom(mp_obj_t num) {
     mp_int_t n = mp_obj_get_int(num);
     vstr_t vstr;
@@ -76,7 +80,9 @@ STATIC mp_obj_t os_urandom(mp_obj_t num) {
     uint32_t r = 0;
     for (int i = 0; i < n; i++) {
         if ((i & 3) == 0) {
-            r = esp_random(); // returns 32-bit hardware random number
+            // TODO: GengYong: waiting for SDK update to use hardware random generator.
+            //r = esp_random(); // returns 32-bit hardware random number
+            r = fastrand();
         }
         vstr.buf[i] = r;
         r >>= 8;

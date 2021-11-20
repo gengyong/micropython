@@ -3,8 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2013-2017 Damien P. George
- * Parts of this file are (C)ChaN, 2014, from FatFs option/syscall.c
+ * Copyright (c) 2013, 2014 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,12 +23,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#ifndef MICROPY_INCLUDED_XT804_FLASH_H
+#define MICROPY_INCLUDED_XT804_FLASH_H
 
-#include "py/runtime.h"
-#include "lib/oofatfs/ff.h"
-#include "shared/timeutils/timeutils.h"
+//bool flash_is_valid_addr(uint32_t addr);
 
-DWORD get_fattime(void) {
-    // TODO: get current time in seconds from 1970-01-01 00:00:00
-    return ((2021 - 1980) << 25) | ((1) << 21) | ((1) << 16) | ((0) << 11) | ((0) << 5) | (0 / 2);
-}
+int32_t flash_get_sector_info(uint32_t addr, uint32_t *start_addr, uint32_t *size);
+int flash_erase(uint32_t flash_dest, uint32_t num_word32);
+int flash_write(uint32_t flash_dest, const uint32_t *src, uint32_t num_word32);
+
+#endif // MICROPY_INCLUDED_XT804_FLASH_H

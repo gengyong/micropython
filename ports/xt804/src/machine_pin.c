@@ -36,16 +36,45 @@
 #include "extmod/virtpin.h"
 #include "modmachine.h"
 #include "machine_pin.h"
+#include "hal_common.h"
+
+#define INVALID_PIN_ID ((uint32_t)(-1))
+#define GPIO_FEATURE_NONE
+
 
 STATIC const machine_pin_obj_t machine_pin_obj[] = {
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_0},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_2},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_3},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_1},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_2},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_3},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_4},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_0, 0, 0},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_1, 0, 1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_2, 0, 2},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_3, 0, 3},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_4, 0, 4},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_5, 0, 5},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_6, 0, 6},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_7, 0, 7},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_8, 0, 8},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_9, 0, 9},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_10, 0, 10},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_11, 0, 11},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_12, 0, 12},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_13, 0, 13},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_14, 0, 14},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_15, 0, 15},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_0, 0, 32},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_1, 0, 33},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_2, 0, 34},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_3, 0, 35},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_4, 0, 36},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_5, 0, 37},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_6, 0, 38},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_7, 0, 39},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_8, 0, 40},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_9, 0, 41},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_10, 0, 42},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_11, 0, 43},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_12, 0, 44},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_13, 0, 45},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_14, 0, 46},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_15, 0, 47},
 };
 
 // forward declaration
@@ -57,7 +86,7 @@ void machine_pins_init(void) {
         //gpio_install_isr_service(0);
         did_install = true;
     }
-    //memset(&MP_STATE_PORT(machine_pin_irq_handler[0]), 0, sizeof(MP_STATE_PORT(machine_pin_irq_handler)));
+    memset(&MP_STATE_PORT(machine_pin_irq_handler[0]), 0, sizeof(MP_STATE_PORT(machine_pin_irq_handler)));
 }
 
 void machine_pins_deinit(void) {
@@ -74,6 +103,7 @@ STATIC void machine_pin_isr_handler(void *arg) {
     // mp_sched_schedule(handler, MP_OBJ_FROM_PTR(self));
     // mp_hal_wake_main_task_from_isr();
 }
+
 
 uint32_t machine_pin_get_id(mp_obj_t pin_in) {
     const mp_obj_type_t * obj_type = mp_obj_get_type(pin_in);
@@ -96,12 +126,12 @@ uint32_t machine_pin_get_id(mp_obj_t pin_in) {
                 if (*p != 0) {
                     // if has invalid char in pin num.
                     mp_raise_ValueError(MP_ERROR_TEXT("expecting a pin"));
-                    return (uint32_t)(-1);
+                    return INVALID_PIN_ID;
                 }
                 return id;
             } else {
                 mp_raise_ValueError(MP_ERROR_TEXT("expecting a pin"));
-                return (uint32_t)(-1);
+                return INVALID_PIN_ID;
             }
             int num = 0;
             for (const char * p = nm + 1; ((*p) >= '0' && (*p) <= '9' && num < 32); p++) {
@@ -112,20 +142,22 @@ uint32_t machine_pin_get_id(mp_obj_t pin_in) {
                 return baseIndex + num;
             }
             mp_raise_ValueError(MP_ERROR_TEXT("pin index out of range"));
-            return (uint32_t)(-1);
+            return INVALID_PIN_ID;
         } else if (obj_type == &mp_type_int) {
             return mp_obj_get_int(pin_in);
         }
         mp_raise_ValueError(MP_ERROR_TEXT("expecting a pin"));
-        return (uint32_t)(-1);
+        return INVALID_PIN_ID;
     }
     machine_pin_obj_t *self = pin_in;
     return self->id;
 }
 
 STATIC void machine_pin_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
-    // machine_pin_obj_t *self = self_in;
-    // mp_printf(print, "Pin(%u)", self->id);
+    machine_pin_obj_t *self = self_in;
+    char prefix = (self->id / 32) + 'A';
+    char pinnum = (self->id % 32);
+    mp_printf(print, "Pin('%c%d')", prefix, pinnum);
 }
 
 // pin.init(mode, pull=None, *, value)
@@ -133,65 +165,56 @@ STATIC mp_obj_t machine_pin_obj_init_helper(const machine_pin_obj_t *self, size_
     enum { ARG_mode, ARG_pull, ARG_value };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_mode, MP_ARG_OBJ, {.u_obj = mp_const_none}},
-        //{ MP_QSTR_pull, MP_ARG_OBJ, {.u_obj = MP_OBJ_NEW_SMALL_INT(-1)}},
+        { MP_QSTR_pull, MP_ARG_OBJ, {.u_obj = MP_OBJ_NEW_SMALL_INT(-1)}},
         { MP_QSTR_value, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
     };
+
+    TDEBUG("machine_pin_obj_init_helper: pin(%u) found", self->id);
+
+    if (self->id == 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("PIN 'PA0' unavialiable."));
+        return mp_const_none;
+    }
 
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
+    if (args[ARG_mode].u_obj == mp_const_none) {
+        mp_raise_ValueError(MP_ERROR_TEXT("PIN 'mode' not set."));
+        return mp_const_none;
+    }
+
     // reset the pin to digital if this is a mode-setting init (grab it back from ADC)
-    // if (args[ARG_mode].u_obj != mp_const_none) {
-    //     if (rtc_gpio_is_valid_gpio(self->id)) {
-    //         #if !CONFIG_IDF_TARGET_ESP32C3
-    //         rtc_gpio_deinit(self->id);
-    //         #endif
-    //     }
-    // }
+    if (args[ARG_mode].u_obj != mp_const_none) {
+        TDEBUG("machine_pin_obj_init_helper: pin(%u) HAL_GPIO_DeInit()", self->id);
+        HAL_GPIO_DeInit(self->gpio, self->pin);
+    }
+    
+    GPIO_InitTypeDef initDef;
 
+    initDef.Pin = self->pin;
+    initDef.Mode = mp_obj_get_int(args[ARG_mode].u_obj);
+    if (args[ARG_pull].u_obj == mp_const_none) {
+        initDef.Pull = GPIO_NOPULL;
+    } else {
+        initDef.Pull = mp_obj_get_int(args[ARG_pull].u_obj);
+    }
 
-    // configure the pin for gpio
-    //gpio_pad_select_gpio(self->id);
+    TDEBUG("machine_pin_obj_init_helper: pin(%u) HAL_GPIO_Init(mode:%u, pull:%u)", 
+        self->id, initDef.Mode, initDef.Pull);
 
-    // set initial value (do this before configuring mode/pull)
-    // if (args[ARG_value].u_obj != MP_OBJ_NULL) {
-    //     gpio_set_level(self->id, mp_obj_is_true(args[ARG_value].u_obj));
-    // }
+    HAL_GPIO_Init(self->gpio, &initDef);
 
-    // // configure mode
-    // if (args[ARG_mode].u_obj != mp_const_none) {
-    //     mp_int_t pin_io_mode = mp_obj_get_int(args[ARG_mode].u_obj);
-    //     #ifdef GPIO_FIRST_NON_OUTPUT
-    //     if (self->id >= GPIO_FIRST_NON_OUTPUT && (pin_io_mode & GPIO_MODE_DEF_OUTPUT)) {
-    //         mp_raise_ValueError(MP_ERROR_TEXT("pin can only be input"));
-    //     }
-    //     #endif
-    //     gpio_set_direction(self->id, pin_io_mode);
-    // }
+    if (args[ARG_value].u_obj != MP_OBJ_NULL) {
+         if (initDef.Mode == GPIO_MODE_OUTPUT) {
+            TDEBUG("machine_pin_obj_init_helper: pin(%u) set default value:  HAL_GPIO_WritePin(%u)", 
+                self->id, mp_obj_is_true(args[ARG_value].u_obj) ? 1 : 0);
 
-    // // configure pull
-    // if (args[ARG_pull].u_obj != MP_OBJ_NEW_SMALL_INT(-1)) {
-    //     int mode = 0;
-    //     if (args[ARG_pull].u_obj != mp_const_none) {
-    //         mode = mp_obj_get_int(args[ARG_pull].u_obj);
-    //     }
-    //     if (mode & GPIO_PULLDOWN) {
-    //         gpio_pulldown_en(self->id);
-    //     } else {
-    //         gpio_pulldown_dis(self->id);
-    //     }
-    //     if (mode & GPIO_PULLUP) {
-    //         gpio_pullup_en(self->id);
-    //     } else {
-    //         gpio_pullup_dis(self->id);
-    //     }
-    //     if (mode & GPIO_NOPULL) {
-    //         gpio_hold_en(self->id);
-    //     } else if (GPIO_IS_VALID_OUTPUT_GPIO(self->id)) {
-    //         gpio_hold_dis(self->id);
-    //     }
-    // }
+            HAL_GPIO_WritePin(self->gpio, self->pin, 
+                mp_obj_is_true(args[ARG_value].u_obj) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+        }
+    }
 
     return mp_const_none;
 }
@@ -200,21 +223,33 @@ STATIC mp_obj_t machine_pin_obj_init_helper(const machine_pin_obj_t *self, size_
 mp_obj_t mp_pin_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 1, MP_OBJ_FUN_ARGS_MAX, true);
 
+    TDEBUG("mp_pin_make_new");
     // get the wanted pin object
-    int wanted_pin = mp_obj_get_int(args[0]);
-    const machine_pin_obj_t *self = NULL;
-    if (0 <= wanted_pin && wanted_pin < MP_ARRAY_SIZE(machine_pin_obj)) {
-        self = (machine_pin_obj_t *)&machine_pin_obj[wanted_pin];
+    uint32_t pin_id = machine_pin_get_id(args[0]);
+    if (pin_id == INVALID_PIN_ID) {
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid pin"));
     }
+    TDEBUG("mp_pin_make_new: pin id: %u", pin_id);
+
+    const machine_pin_obj_t *self = NULL;
+    for (int i = 0; i < MP_ARRAY_SIZE(machine_pin_obj); i++) {
+        if (machine_pin_obj[i].id == pin_id) {
+            self = (machine_pin_obj_t *)&machine_pin_obj[i];
+            break;
+        }
+    }
+    
     if (self == NULL || self->base.type == NULL) {
         mp_raise_ValueError(MP_ERROR_TEXT("invalid pin"));
     }
+
+    TDEBUG("mp_pin_make_new: pin(%u) found", pin_id);
 
     if (n_args > 1 || n_kw > 0) {
         // pin mode given, so configure this GPIO
         mp_map_t kw_args;
         mp_map_init_fixed_table(&kw_args, n_kw, args + n_args);
-        //machine_pin_obj_init_helper(self, n_args - 1, args + 1, &kw_args);
+        machine_pin_obj_init_helper(self, n_args - 1, args + 1, &kw_args);
     }
 
     return MP_OBJ_FROM_PTR(self);
@@ -226,11 +261,14 @@ STATIC mp_obj_t machine_pin_call(mp_obj_t self_in, size_t n_args, size_t n_kw, c
     machine_pin_obj_t *self = self_in;
     if (n_args == 0) {
         // get pin
-        //return MP_OBJ_NEW_SMALL_INT(gpio_get_level(self->id));
-        return mp_const_none;
+        TDEBUG("machine_pin_call: read pin(%u)", self->id);
+        GPIO_PinState state = HAL_GPIO_ReadPin(self->gpio, self->pin);
+        return MP_OBJ_NEW_SMALL_INT(state == GPIO_PIN_SET ? 1:0);
     } else {
         // set pin
-        //gpio_set_level(self->id, mp_obj_is_true(args[0]));
+        TDEBUG("machine_pin_call: set pin(%u) = %d", self->id,  mp_obj_is_true(args[0]) ? 1:0);
+        GPIO_PinState state = mp_obj_is_true(args[0]) ? GPIO_PIN_SET : GPIO_PIN_RESET;
+        HAL_GPIO_WritePin(self->gpio, self->pin, state);
         return mp_const_none;
     }
 }
@@ -243,23 +281,24 @@ MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_init_obj, 1, machine_pin_obj_init);
 
 // pin.value([value])
 STATIC mp_obj_t machine_pin_value(size_t n_args, const mp_obj_t *args) {
-    //return machine_pin_call(args[0], n_args - 1, 0, args + 1);
-    return mp_const_none;
+    return machine_pin_call(args[0], n_args - 1, 0, args + 1);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_pin_value_obj, 1, 2, machine_pin_value);
 
 // pin.off()
 STATIC mp_obj_t machine_pin_off(mp_obj_t self_in) {
-    //machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    //gpio_set_level(self->id, 0);
+    machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    TDEBUG("machine_pin_off: pin(%u)", self->id);
+    HAL_GPIO_WritePin(self->gpio, self->pin, GPIO_PIN_RESET);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_off_obj, machine_pin_off);
 
 // pin.on()
 STATIC mp_obj_t machine_pin_on(mp_obj_t self_in) {
-    //machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    //gpio_set_level(self->id, 1);
+    machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    TDEBUG("machine_pin_on: pin(%u)", self->id);
+    HAL_GPIO_WritePin(self->gpio, self->pin, GPIO_PIN_SET);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_on_obj, machine_pin_on);
@@ -333,40 +372,39 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_irq_obj, 1, machine_pin_irq);
 
 STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     // instance methods
-    //{ MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&machine_pin_init_obj) },
+    { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&machine_pin_init_obj) },
     { MP_ROM_QSTR(MP_QSTR_value), MP_ROM_PTR(&machine_pin_value_obj) },
     { MP_ROM_QSTR(MP_QSTR_off), MP_ROM_PTR(&machine_pin_off_obj) },
     { MP_ROM_QSTR(MP_QSTR_on), MP_ROM_PTR(&machine_pin_on_obj) },
-    //{ MP_ROM_QSTR(MP_QSTR_irq), MP_ROM_PTR(&machine_pin_irq_obj) },
+    { MP_ROM_QSTR(MP_QSTR_irq), MP_ROM_PTR(&machine_pin_irq_obj) },
 
     // class constants
-    //{ MP_ROM_QSTR(MP_QSTR_IN), MP_ROM_INT(0) },
-    //{ MP_ROM_QSTR(MP_QSTR_OUT), MP_ROM_INT(1) },
-    //{ MP_ROM_QSTR(MP_QSTR_OPEN_DRAIN), MP_ROM_INT(2) },
-    //{ MP_ROM_QSTR(MP_QSTR_PULL_UP), MP_ROM_INT(3) },
-    //{ MP_ROM_QSTR(MP_QSTR_PULL_DOWN), MP_ROM_INT(4) },
-    //{ MP_ROM_QSTR(MP_QSTR_PULL_HOLD), MP_ROM_INT(5) },
-    //{ MP_ROM_QSTR(MP_QSTR_IRQ_RISING), MP_ROM_INT(6) },
-    //{ MP_ROM_QSTR(MP_QSTR_IRQ_FALLING), MP_ROM_INT(7) },
-    //{ MP_ROM_QSTR(MP_QSTR_WAKE_LOW), MP_ROM_INT(8) },
-    //{ MP_ROM_QSTR(MP_QSTR_WAKE_HIGH), MP_ROM_INT(9) },
+    { MP_ROM_QSTR(MP_QSTR_IN), MP_ROM_INT(GPIO_MODE_INPUT) },
+    { MP_ROM_QSTR(MP_QSTR_OUT), MP_ROM_INT(GPIO_MODE_OUTPUT) },
+    { MP_ROM_QSTR(MP_QSTR_PULL_UP), MP_ROM_INT(GPIO_PULLUP) },
+    { MP_ROM_QSTR(MP_QSTR_PULL_DOWN), MP_ROM_INT(GPIO_PULLDOWN) },
+    { MP_ROM_QSTR(MP_QSTR_PULL_NONE), MP_ROM_INT(GPIO_NOPULL) },
+    { MP_ROM_QSTR(MP_QSTR_IRQ_RISING), MP_ROM_INT(6) }, //?
+    { MP_ROM_QSTR(MP_QSTR_IRQ_FALLING), MP_ROM_INT(7) },    //?
 };
 
 STATIC mp_uint_t pin_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
-    /*
+    
     (void)errcode;
     machine_pin_obj_t *self = self_in;
 
     switch (request) {
         case MP_PIN_READ: {
-            return gpio_get_level(self->id);
+            TDEBUG("pin_ioctl: read pin(%u)", self->id);
+            return HAL_GPIO_ReadPin(self->gpio, self->pin) == GPIO_PIN_SET ? 1:0;
         }
         case MP_PIN_WRITE: {
-            gpio_set_level(self->id, arg);
+            TDEBUG("pin_ioctl: write pin(%u) = %u", self->id, arg);
+            HAL_GPIO_WritePin(self->gpio, self->pin, arg ? GPIO_PIN_SET : GPIO_PIN_RESET);
             return 0;
         }
     }
-    */
+
     return -1;
 }
 
@@ -392,38 +430,47 @@ const mp_obj_type_t machine_pin_type = {
 STATIC const mp_obj_type_t machine_pin_irq_type;
 
 STATIC const machine_pin_irq_obj_t machine_pin_irq_object[] = {
-    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_0},
-    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_1},
-    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_2},
-    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_3},
-    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_4},
-    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_5},
-    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_6},
-    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_7},
+    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_0, 0, 0},
+    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_1, 0, 1},
+    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_2, 0, 2},
+    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_3, 0, 3},
+    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_4, 0, 4},
+    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_5, 0, 5},
+    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_6, 0, 6},
+    {{&machine_pin_irq_type}, GPIOA, GPIO_PIN_7, 0, 7},
+
+    {{&machine_pin_irq_type}, GPIOB, GPIO_PIN_0, 0, 32},
+    {{&machine_pin_irq_type}, GPIOB, GPIO_PIN_1, 0, 33},
+    {{&machine_pin_irq_type}, GPIOB, GPIO_PIN_2, 0, 34},
+    {{&machine_pin_irq_type}, GPIOB, GPIO_PIN_3, 0, 35},
+    {{&machine_pin_irq_type}, GPIOB, GPIO_PIN_4, 0, 36},
+    {{&machine_pin_irq_type}, GPIOB, GPIO_PIN_5, 0, 37},
+    {{&machine_pin_irq_type}, GPIOB, GPIO_PIN_6, 0, 38},
+    {{&machine_pin_irq_type}, GPIOB, GPIO_PIN_7, 0, 39},
 };
 
 STATIC mp_obj_t machine_pin_irq_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
-    //machine_pin_irq_obj_t *self = self_in;
-    ///mp_arg_check_num(n_args, n_kw, 0, 0, false);
-    //machine_pin_isr_handler((void *)&machine_pin_obj[self->id]);
+    machine_pin_irq_obj_t *self = self_in;
+    mp_arg_check_num(n_args, n_kw, 0, 0, false);
+    machine_pin_isr_handler((void *)&machine_pin_obj[self->id]);
     return mp_const_none;
 }
 
 STATIC mp_obj_t machine_pin_irq_trigger(size_t n_args, const mp_obj_t *args) {
-    //machine_pin_irq_obj_t *self = args[0];
-    //uint32_t orig_trig = GPIO.pin[self->id].int_type;
+    // machine_pin_irq_obj_t *self = args[0];
+    // uint32_t orig_trig = GPIO.pin[self->id].int_type;
     // if (n_args == 2) {
-    //     // set trigger
+    //      // set trigger
     //     gpio_set_intr_type(self->id, mp_obj_get_int(args[1]));
     // }
     // // return original trigger value
-    //return MP_OBJ_NEW_SMALL_INT(orig_trig);
-    return mp_const_none;
+    // return MP_OBJ_NEW_SMALL_INT(orig_trig);
+     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_pin_irq_trigger_obj, 1, 2, machine_pin_irq_trigger);
 
 STATIC const mp_rom_map_elem_t machine_pin_irq_locals_dict_table[] = {
-    //{ MP_ROM_QSTR(MP_QSTR_trigger), MP_ROM_PTR(&machine_pin_irq_trigger_obj) },
+    { MP_ROM_QSTR(MP_QSTR_trigger), MP_ROM_PTR(&machine_pin_irq_trigger_obj) },
 };
 STATIC MP_DEFINE_CONST_DICT(machine_pin_irq_locals_dict, machine_pin_irq_locals_dict_table);
 

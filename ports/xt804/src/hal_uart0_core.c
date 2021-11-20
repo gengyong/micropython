@@ -12,8 +12,8 @@
 // define REPL(listen on uart0) input buffer size
 #define REPL_INPUT_BUFFER_SIZE  (512)
 // ==========================================
-static int repl_buffer_tail = 0;
-static int repl_buffer_iter = 0;
+static int8_t repl_buffer_tail = 0;
+static int8_t repl_buffer_iter = 0;
 static uint8_t repl_buffer[REPL_INPUT_BUFFER_SIZE];
 //===========================================
 // IRQ: UART0
@@ -38,7 +38,7 @@ void HAL_UART0_Init() {
 		repl_buffer_iter = 0;
 	    HAL_UART_Receive_IT(&huart, uart0_buffer, 0);
 	} else {
-        hal_panic("UART0: init failed.");
+        TPANIC("UART0: init failed.");
     }
 }
 
@@ -48,9 +48,6 @@ void HAL_UART0_DeInit() {
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-	// if (FifoSpaceLen() >= huart->RxXferCount) {
-	// 	FifoWrite(huart->pRxBuffPtr, huart->RxXferCount);
-	// }
 	if (repl_buffer_tail + huart->RxXferCount <= sizeof(repl_buffer)) {
 		memcpy(repl_buffer + repl_buffer_tail, huart->pRxBuffPtr, huart->RxXferCount);
 		repl_buffer_tail += huart->RxXferCount;
@@ -65,7 +62,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		if (left >= huart->RxXferCount) {
 			left = huart->RxXferCount;
 		} else {
-			hal_error("[REPL UART0] buffer overflow. %d bytes was dropped.", huart->RxXferCount - left);
+			TERROR("[REPL UART0] buffer overflow. %d bytes was dropped.", huart->RxXferCount - left);
 		}
 		memcpy(repl_buffer + repl_buffer_tail, huart->pRxBuffPtr, left);
 		repl_buffer_tail += left;
@@ -125,19 +122,7 @@ static inline bool decode_utf8_from_buffer(int * code) {
 //===========================================
 // implement MPY HAL stdio
 //===========================================
-#include "xt804_mphal.h"
-// implement functions which declared in <py/mphal.h>
-// Receive single character
-// int mp_hal_stdin_rx_chr(void) {
-//     unsigned char c = 0;
-   
-//     // wait for RXNE
-//     if (FifoDataLen() > 0) {
-//         FifoRead(&c, 1);
-//     }
-    
-//     return c;
-// }
+#include "mphalport.h"
 int mp_hal_stdin_rx_chr(void) {
 	for (;;) {
 		if (repl_buffer_iter < repl_buffer_tail) {
@@ -151,7 +136,6 @@ int mp_hal_stdin_rx_chr(void) {
 	}
     return 0;
 }
-
 
 void mp_hal_stdout_tx_strn(const char *str, size_t len) {
     while (len--) {

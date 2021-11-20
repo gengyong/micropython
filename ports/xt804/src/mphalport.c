@@ -11,7 +11,7 @@
 #include "shared/timeutils/timeutils.h"
 #include "shared/runtime/pyexec.h"
 
-#include "xt804_mphal.h"
+#include "mphalport.h"
 
 //================================================
 // Time
@@ -50,6 +50,10 @@ uint64_t mp_hal_time_ns(void) {
     return ns;
 }
 
+//================================================
+// ringbuf for dupterm
+STATIC uint8_t stdin_ringbuf_array[260];
+ringbuf_t stdin_ringbuf = {stdin_ringbuf_array, sizeof(stdin_ringbuf_array), 0, 0};
 
 
 //#include "usb.h"
