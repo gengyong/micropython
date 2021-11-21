@@ -1,4 +1,21 @@
-# [中文说明]
+# 基于 平头哥XT804 CPU 的 MicroPython
+
+## 可用的开发板
+
+### W806
+[联盛德 W806](https://www.hlktech.com/NewsInfo-213.html)
+[WinnerMicro W806](https://www.cnx-software.com/2021/11/08/winnermicro-w806-240-mhz-mcu-2-development-board/)
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/gengyong/micropython/master/ports/xt804/boards/W806/picture.jpg" alt="W806 board"/>
+</p>
+
+
+### W800
+TBD.
+### W801
+TBD.
+
 
 ## 如何使用
 
