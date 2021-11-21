@@ -1,5 +1,20 @@
 # 基于 平头哥XT804 CPU 的 MicroPython
 
+## 项目当前进度
+python 跑了起来，正在移植各种模块及硬件器件。
+
+[发布](https://github.com/gengyong/micropython/releases)里提供了编译好的rom供尝鲜.
+
+2021-11-21：
+1. GPIO 勉强工作了，可以读写，GPIO IRQ还没实现。
+2. machine，os 等基础模块勉强工作了。
+3. bdev还有问题， 文件系统还不能建立。
+4. 兼容 pyboard.py 工具了， 其它工具没试。
+
+## 计划
+TBD.
+
+
 ## 可用的开发板
 
 ### W806
@@ -147,17 +162,12 @@ W806 没有网络，只能通过串口连接。
 打开任意串口工具(比如putty), 波特率 115200，数据位8，停止位1, 连接即可。
 
 
-## 项目当前进度
-python 跑了起来，正在移植各种模块及硬件器件。
-
-[发布](https://github.com/gengyong/micropython/releases)里提供了编译好的rom供尝鲜，现在除了做算术题啥也不是，可以下载试试。
-
 # The xt804 port
 
 This port is intended to be a minimal MicroPython port that actually runs.
-It can run under Linux (or similar) and on any STM32F4xx MCU (eg the pyboard).
+It can run on any xt804 MCU (eg the W806 board).
 
-## Building and running Linux version
+## Building and running
 
 When you first time running build:
 
@@ -169,10 +179,10 @@ By default the port will be built for the host machine:
     $ make
 
 
-## Building for an xt804 MCU
+## Building for xt804 MCU
 
-The Makefile has the ability to build for a Cortex-M CPU, and by default
-includes some start-up code for an STM32F4xx MCU and also enables a UART
+The Makefile has the ability to build for a xt804 CPU, and by default
+includes some start-up code for an xt804 MCU and also enables a UART
 for communication.  To build:
 
     $ make
