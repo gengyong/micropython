@@ -12,8 +12,8 @@
 // define REPL(listen on uart0) input buffer size
 #define REPL_INPUT_BUFFER_SIZE  (512)
 // ==========================================
-static int8_t repl_buffer_tail = 0;
-static int8_t repl_buffer_iter = 0;
+static int16_t repl_buffer_tail = 0;
+static int16_t repl_buffer_iter = 0;
 static uint8_t repl_buffer[REPL_INPUT_BUFFER_SIZE];
 //===========================================
 // IRQ: UART0
@@ -54,7 +54,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	} else {
 		if (repl_buffer_iter > 0) {
 			int left = repl_buffer_tail - repl_buffer_iter;
-			memcpy(repl_buffer, repl_buffer + repl_buffer_iter, left);
+            if (left > 0) {
+			    memcpy(repl_buffer, repl_buffer + repl_buffer_iter, left);
+            }
 			repl_buffer_iter = 0;
 			repl_buffer_tail = left;
 		}
