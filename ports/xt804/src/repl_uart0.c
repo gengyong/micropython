@@ -28,11 +28,16 @@
 #define DEBUG_SHOW_GCINFO 1
 //===========================================
 
+#ifndef HEAP_MEM_SIZE
 //#define HEAP_MEM_SIZE ((288-8) * 1024)
 #define HEAP_MEM_SIZE ((288-12) * 1024)
+//#define HEAP_MEM_SIZE (283195)
+#endif
+
 
 #define V_SRAM_START  (0x20000000)
 #define D_SRAM_START  (0x20000100)
+#define D_SRAM_END    (0x20048000)  //Total RAM: 288KB
 
 //extern uint32_t __ram_end;
 //extern uint32_t __heap_end;
@@ -117,9 +122,15 @@ void repl_listen_uart0() {
     mpy_hal_startup();
     session_startup();
 
-    TLOG("STACK TOP:0x%x HEAP: [0x%p - 0x%p] SIZE: 0x%x(%dKB)", STACK_TOP, HEAP_MEM, HEAP_MEM + sizeof(HEAP_MEM), sizeof(HEAP_MEM), sizeof(HEAP_MEM)>>10);
-    TLOG("ready enter loop.");
-
+    TLOG("V-RAM:  [0x%X - 0x%X] SIZE: 0x%X (%d bytes)", V_SRAM_START, D_SRAM_START, (D_SRAM_START - V_SRAM_START), (D_SRAM_START - V_SRAM_START));
+    TLOG("STACK:  [0x%X - 0x%X] SIZE: 0x%X (%dKB)", D_SRAM_START, STACK_TOP, (STACK_TOP - D_SRAM_START), (STACK_TOP - D_SRAM_START)>>10);
+    TLOG("HEAP:   [0x%p - 0x%p] SIZE: 0x%X (%dKB)", HEAP_MEM, HEAP_MEM + sizeof(HEAP_MEM), sizeof(HEAP_MEM), sizeof(HEAP_MEM)>>10);
+    TLOG("SYSTEM: [0x%X - 0x%X, 0x%X - 0x%X] SIZE: 0x%X (%dKB)", 
+        STACK_TOP, HEAP_MEM, 
+        HEAP_MEM + sizeof(HEAP_MEM), D_SRAM_END, 
+        (((uint32_t)HEAP_MEM - STACK_TOP) + (D_SRAM_END - ((uint32_t)HEAP_MEM + sizeof(HEAP_MEM)))),
+        (((uint32_t)HEAP_MEM - STACK_TOP) + (D_SRAM_END - ((uint32_t)HEAP_MEM + sizeof(HEAP_MEM))))>>10);
+    
     mp_hal_stdout_tx_str("\r\n");
     for (;;) {
         for (;;) {

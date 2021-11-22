@@ -81,9 +81,6 @@ typedef uint8_t __uint8_t;
 #define MICROPY_USE_INTERNAL_PRINTF         (0) // ESP32 SDK requires its own printf
 #define MICROPY_ENABLE_SCHEDULER            (1)
 #define MICROPY_SCHEDULER_DEPTH             (8)
-#define MICROPY_VFS                         (1)
-#define MICROPY_VFS_FAT                     (1)
-#define MICROPY_VFS_POSIX_FILE              (0)
 #define MICROPY_PY_SYS_PLATFORM             "mpy-xt804"
 
 // control over Python builtins
@@ -152,12 +149,43 @@ typedef uint8_t __uint8_t;
 #define MICROPY_PY_USELECT                  (1)
 #define MICROPY_PY_UTIME_MP_HAL             (1)
 #define MICROPY_PY_OS_DUPTERM               (1)
-#define MICROPY_PY_UWEBSOCKET               (0)
+#define MICROPY_PY_NETWORK                  (1)
+#define MICROPY_PY_UWEBSOCKET               (1)
+//#define MICROPY_PY_BTREE                    (1)
+#define MICROPY_PY_FRAMEBUF                 (1)
+#define MICROPY_PY_ONEWIRE                  (1)
+#define MICROPY_PY_UASYNCIO                 (1)
+#define MICROPY_PY_UBINASCII                (1)
+#define MICROPY_PY_UCRYPTOLIB               (1)
+#define MICROPY_PY_UCTYPES                  (1)
+#define MICROPY_PY_UHASHLIB                 (0)
+#define MICROPY_PY_UHASHLIB_SHA1            (1)
+#define MICROPY_PY_UHASHLIB_SHA256          (1)
+#define MICROPY_PY_UHASHLIB_MD5             (1)
+#define MICROPY_PY_UHEAPQ                   (1)
+#define MICROPY_PY_UJSON                    (1)
+#define MICROPY_PY_UPLATFORM                (1)
+#define MICROPY_PY_URE                      (1)
+#define MICROPY_PY_USELECT                  (1)
+#define MICROPY_PY_USOCKET                  (1)
+//#define MICROPY_PY_USSL                     (1)
+//#define MICROPY_SSL_AXTLS                   (1)
+#define MICROPY_PY_UTIMEQ                   (1)
+#define MICROPY_PY_UWEBSOCKET               (1)
+#define MICROPY_PY_UZLIB                    (1)
+#define MICROPY_PY_WEBREPL                  (1)
+#define MICROPY_PY_BLUETOOTH                (0)
+
 
 // config machine modules
 #define MICROPY_PY_MACHINE                  (1)
 #define MICROPY_PY_MACHINE_BITSTREAM        (1)
-
+#define MICROPY_PY_MACHINE_PULSE            (1)
+#define MICROPY_PY_MACHINE_PIN_MAKE_NEW     mp_pin_make_new
+#define MICROPY_PY_MACHINE_SOFTI2C          (1)
+#define MICROPY_PY_MACHINE_PWM              (1)
+#define MICROPY_PY_MACHINE_SPI              (1)
+#define MICROPY_PY_MACHINE_SOFTSPI          (1)
 
 ///#define MICROPY_PY_THREAD                   (1)
 ///#define MICROPY_PY_THREAD_GIL               (1)
@@ -165,16 +193,34 @@ typedef uint8_t __uint8_t;
 
 
 // fatfs configuration
+#define MICROPY_VFS                         (1)
+//#define MICROPY_VFS_FAT                     (1)
+//#define MICROPY_VFS_LFS2                    (1)
+
+
+
+// fatfs configuration
 #define MICROPY_FATFS_ENABLE_LFN            (1)
+#define MICROPY_FATFS_LFN_CODE_PAGE         437 /* 1=SFN/ANSI 437=LFN/U.S.(OEM) */
 #define MICROPY_FATFS_RPATH                 (2)
 #define MICROPY_FATFS_MAX_SS                (4096)
-#define MICROPY_FATFS_LFN_CODE_PAGE         437 /* 1=SFN/ANSI 437=LFN/U.S.(OEM) */
-#define mp_type_fileio                      mp_type_vfs_fat_fileio
-#define mp_type_textio                      mp_type_vfs_fat_textio
+
+#define mp_type_fileio                      mp_type_vfs_lfs2_fileio
+#define mp_type_textio                      mp_type_vfs_lfs2_textio
 
 #ifndef MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE
 #define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (1)
 #endif
+
+// use vfs's functions for import stat and builtin open
+#if MICROPY_VFS
+#   define mp_import_stat mp_vfs_import_stat
+#   define mp_builtin_open mp_vfs_open
+#   define mp_builtin_open_obj mp_vfs_open_obj
+#endif
+
+#define MICROPY_PORT_BUILTINS \
+    { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&mp_builtin_open_obj) },
 
 #if 0
 // extra built in names to add to the global namespace
@@ -201,61 +247,51 @@ extern const struct _mp_obj_module_t mp_module_onewire;
 
 #endif
 
-
-#define MICROPY_PORT_BUILTINS \
-    { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&mp_builtin_open_obj) },
-
-#if 0
 extern const struct _mp_obj_module_t mp_module_machine;
-extern const struct _mp_obj_module_t mp_module_os;
-extern const struct _mp_obj_module_t mp_module_time;
-#define MICROPY_PORT_BUILTIN_MODULES \
-    { MP_ROM_QSTR(MP_QSTR_utime), MP_ROM_PTR(&mp_module_time) }, \
-    { MP_ROM_QSTR(MP_QSTR_umachine), MP_ROM_PTR(&mp_module_machine) }, \
-    { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_os) }, \
-
-#endif
-
-extern const struct _mp_obj_module_t utime_module;
-extern const struct _mp_obj_module_t uos_module;;
-extern const struct _mp_obj_module_t mp_module_machine;
+extern const struct _mp_obj_module_t mp_module_network;
+extern const struct _mp_obj_module_t mp_module_onewire;
+extern const struct _mp_obj_module_t mp_module_uos;;
+extern const struct _mp_obj_module_t mp_module_usocket;
+extern const struct _mp_obj_module_t mp_module_utime;
 extern const struct _mp_obj_module_t xt804_module;
-#define MICROPY_PORT_BUILTIN_MODULES \
-    { MP_ROM_QSTR(MP_QSTR_utime), (mp_obj_t)&utime_module }, \
-    { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&uos_module) }, \
-    { MP_ROM_QSTR(MP_QSTR_xt804), MP_ROM_PTR(&xt804_module) }, \
-    { MP_ROM_QSTR(MP_QSTR_umachine), MP_ROM_PTR(&mp_module_machine) }, \
-    
 
-
-// use vfs's functions for import stat and builtin open
-#if MICROPY_VFS
-#   define mp_import_stat mp_vfs_import_stat
-#   define mp_builtin_open mp_vfs_open
-#   define mp_builtin_open_obj mp_vfs_open_obj
+#if MICROPY_PY_USOCKET
+#define SOCKET_BUILTIN_MODULE               { MP_ROM_QSTR(MP_QSTR_usocket), MP_ROM_PTR(&mp_module_usocket) },
+#else
+#define SOCKET_BUILTIN_MODULE
+#endif
+#if MICROPY_PY_NETWORK
+#define NETWORK_BUILTIN_MODULE              { MP_ROM_QSTR(MP_QSTR_network), MP_ROM_PTR(&mp_module_network) },
+#define NETWORK_ROOT_POINTERS               mp_obj_list_t mod_network_nic_list;
+#else
+#define NETWORK_BUILTIN_MODULE
+#define NETWORK_ROOT_POINTERS
 #endif
 
-// ----------------
-#define MP_SSIZE_MAX                        (0x7FFFFFFF)
-#define MP_NEED_LOG2                        (1)
+#if MICROPY_PY_BLUETOOTH
+#define MICROPY_PORT_ROOT_POINTER_BLUETOOTH struct _machine_uart_obj_t *mp_bthci_uart;
+#else
+#define MICROPY_PORT_ROOT_POINTER_BLUETOOTH
+#endif
 
-#define MICROPY_EVENT_POLL_HOOK \
-    do { \
-        extern void mp_handle_pending(bool); \
-        mp_handle_pending(true); \
-    } while (0);
+#define MICROPY_PORT_BUILTIN_MODULES \
+    { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&mp_module_machine) }, \
+    { MP_OBJ_NEW_QSTR(MP_QSTR__onewire), (mp_obj_t)&mp_module_onewire }, \
+    { MP_ROM_QSTR(MP_QSTR_xt804), MP_ROM_PTR(&xt804_module) }, \
+    { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_uos) }, \
+    { MP_ROM_QSTR(MP_QSTR_utime), (mp_obj_t)&mp_module_utime }, \
+    SOCKET_BUILTIN_MODULE \
+    NETWORK_BUILTIN_MODULE \
 
-#define MICROPY_THREAD_YIELD()
 
-
-#define MICROPY_MPHALPORT_H                 "mphalport.h"
-
+#define MICROPY_PORT_NETWORK_INTERFACES
 
 //----------------------------------------------------------
 #define MP_STATE_PORT MP_STATE_VM
 #define MICROPY_PORT_ROOT_POINTERS \
     const char *readline_hist[8]; \
     mp_obj_t machine_pin_irq_handler[44]; \
+    NETWORK_ROOT_POINTERS \
     \
     /*mp_obj_t pyb_hid_report_desc; */\
     \
@@ -297,3 +333,17 @@ extern const struct _mp_obj_module_t xt804_module;
     /* root pointers defined by a board */ \
     /*    MICROPY_BOARD_ROOT_POINTERS */\
 
+
+//----------------------------------------------------------
+#define MP_SSIZE_MAX                        (0x7FFFFFFF)
+#define MP_NEED_LOG2                        (1)
+
+#define MICROPY_EVENT_POLL_HOOK \
+    do { \
+        extern void mp_handle_pending(bool); \
+        mp_handle_pending(true); \
+    } while (0);
+
+#define MICROPY_THREAD_YIELD()
+
+#define MICROPY_MPHALPORT_H                 "mphalport.h"

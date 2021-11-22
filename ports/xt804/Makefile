@@ -1,13 +1,11 @@
 ########################################################################################
-CROSS = 1
-########################################################################################
 # Board: W806
 TargetBoard=W806
 TargetArch=xt804
 TargetArchFlag=ck803
 TargetArchFPU=hard-fp
 TargetCCOption=-mcpu=ck804ef -mhard-float -DTLS_CONFIG_CPU_XT804=1
-TargetLDOption=-mcpu=ck804ef -mhard-float 
+TargetLDOption=-mcpu=ck804ef -mhard-float
 ########################################################################################
 # Setup toolchain
 ToolChainName=csky-elfabiv2
@@ -20,54 +18,53 @@ ExtraLinkOption=-Wl,-zmax-page-size=1024
 # Setup sdk path
 SDKPath =./sdk/WM_SDK_$(TargetBoard)
 ########################################################################################
-ifeq ($(CROSS), 1)
-	CROSS_COMPILE ?= $(ToolChainPath)/bin/$(ToolChainName)-
-endif
+# MicroPython feature configurations
+MICROPY_ROM_TEXT_COMPRESSION ?= 1
+MICROPY_VFS_FAT = 1
+MICROPY_VFS_LFS2 = 1
+MICROPY_PY_USSL = 1
+MICROPY_SSL_AXTLS = 1
+MICROPY_PY_LWIP = 0
+MICROPY_PY_BTREE = 1
+AXTLS_DEFS_EXTRA = -Dabort=abort_ -DRT_MAX_PLAIN_LENGTH=1024 -DRT_EXTRA=4096
+BTREE_DEFS_EXTRA = -DDEFPSIZE=1024 -DMINCACHE=3
+########################################################################################
+CROSS_COMPILE ?= $(ToolChainPath)/bin/$(ToolChainName)-
 
 include ../../py/mkenv.mk
 
 OBJDUMP ?=$(CROSS_COMPILE)objdump
 RANLIB ?= $(CROSS_COMPILE)ranlib
-ifeq ($(CROSS), 1)
-	LD = $(CROSS_COMPILE)gcc
-	AS = $(CROSS_COMPILE)gcc
-	CPP = $(CROSS_COMPILE)gcc -E
-	CXX	= $(CROSS_COMPILE)g++
-	AR = $(CROSS_COMPILE)ar rcu
-endif
 
+LD = $(CROSS_COMPILE)gcc
+AS = $(CROSS_COMPILE)gcc
+CPP = $(CROSS_COMPILE)gcc -E
+CXX	= $(CROSS_COMPILE)g++
+AR = $(CROSS_COMPILE)ar rcu
+
+########################################################################################
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h
 #QSTR_GLOBAL_DEPENDENCIES = mpconfigboard.h
 ########################################################################################
-# MicroPython feature configurations
-MICROPY_ROM_TEXT_COMPRESSION ?= 1
-MICROPY_PY_USSL = 1
-MICROPY_SSL_AXTLS = 1
-
-AXTLS_DEFS_EXTRA = -Dabort=abort_ -DRT_MAX_PLAIN_LENGTH=1024 -DRT_EXTRA=4096
-BTREE_DEFS_EXTRA = -DDEFPSIZE=1024 -DMINCACHE=3
-
+# frozen python scripts
 FROZEN_MANIFEST = boards/$(TargetBoard)/manifest.py
-
+########################################################################################
 # include py core make definitions
 include $(TOP)/py/py.mk
-
 ########################################################################################
 # setup submodules, run 'make submodules' to get.
 GIT_SUBMODULES = lib/axtls lib/berkeley-db-1.xx lib/lwip
-
 ########################################################################################
-INC += -I. -I./include -I./boards/$(TargetBoard)/include -I./src
+COPT = -O2 -g3 -Wall
+########################################################################################
+INC += -I./boards/$(TargetBoard)/include 
+INC += -I./include 
+INC += -I. 
+INC += -I./src
 INC += -I$(TOP)
 INC += -I$(BUILD)
 
-LIBDIRS = .
-LIBS +=
-
-COPT = -O2 -g3 -Wall
-
-ifeq ($(CROSS), 1)
 PLATFORM_SRCDIR = \
 	$(SDKPath)/platform/drivers \
 	$(SDKPath)/platform/arch/$(TargetArch)/bsp \
@@ -102,58 +99,51 @@ PLATFORM_LIBDIR = \
 	$(SDKPath)/lib/$(TargetBoard) \
 	$(ToolChainPath)/$(ToolChainName)/lib/$(TargetArchFlag)/$(TargetArchFPU) \
 
-
-INC += $(addprefix -I,$(PLATFORM_INCDIR))
-#INC += -I$(TOP)/lib/lwip/src/include -I$(TOP)/extmod/lwip-include
-
-LIBDIRS += $(PLATFORM_LIBDIR)
-
+########################################################################################
 CC_DEFAULT_OPTIONS = $(TargetCCOption) -DGCC_COMPILE=1 -ffunction-sections -fdata-sections
 AS_DEFAULT_OPTIONS = $(TargetCCOption) -Wa,--gdwarf2
 LD_MAP_OPTION = -Wl,--ckmap=$(BUILD)/firmware.map
 LD_LIB_OPTION = -Wl,--start-group -Wl,--end-group
 LD_DEFAULT_OPTIONS = $(ExtraLinkOption) $(LD_MAP_OPTION) $(TargetLDOption) -nostartfiles -Wl,--gc-sections -T"$(SDKPath)/ld/$(TargetBoard)/gcc_csky.ld" $(LD_LIB_OPTION) 
-
+########################################################################################
 ifeq ($(prod),)
 CC_DEFAULT_OPTIONS +=-DDEBUG
 endif
+########################################################################################
 
-DFU = $(TOP)/tools/dfu.py
-PYDFU = $(TOP)/tools/pydfu.py
+#INC += $(addprefix -I,$(PLATFORM_INCDIR))
+#INC += -I$(TOP)/lib/lwip/src/include -I$(TOP)/extmod/lwip-include
 
-CFLAGS = $(INC) $(CC_DEFAULT_OPTIONS) $(COPT) $(CFLAGS_MOD)
+
+CFLAGS = $(INC) $(addprefix -I,$(PLATFORM_INCDIR)) $(CC_DEFAULT_OPTIONS) $(COPT) $(CFLAGS_MOD)
 SFLAGS = $(addprefix -I,$(PLATFORM_ASMINC)) $(AS_DEFAULT_OPTIONS)
 LDFLAGS = $(LD_DEFAULT_OPTIONS)
-else
-LD = gcc
-CFLAGS = $(INC) -Wdouble-promotion -Wfloat-conversion -std=c99 $(COPT)
-LDFLAGS = -Wl,-Map=$@.map,--cref -Wl,--gc-sections
-# Tune for Debugging or Optimization
-ifeq ($(DEBUG), 1)
-CFLAGS += -O0 -ggdb
-else
-CFLAGS += -Os -DNDEBUG
-CFLAGS += -fdata-sections -ffunction-sections
-endif
-endif
+########################################################################################
+include $(TOP)/extmod/extmod.mk
 
-# Flags for optional C++ source code
-CXXFLAGS += $(filter-out -std=c99,$(CFLAGS))
-CXXFLAGS += $(CXXFLAGS_MOD)
-
-# Flags for user C modules
+# Flags from extmods
 CFLAGS += $(CFLAGS_MOD)
 LDFLAGS += $(LDFLAGS_MOD)
 
-#-ljson -llwip_open -lpp -lnet80211 -lwpa -lphy -lnet80211
-#LIBS += dsp c cc-rt m semi ssp stdc++ supc++
-LIBS += semi
+ifneq ($(FROZEN_MANIFEST),)
+CFLAGS += -DMICROPY_MODULE_FROZEN_STR
+CFLAGS += -DMICROPY_MODULE_FROZEN_MPY
+CFLAGS += -DMICROPY_QSTR_EXTRA_POOL=mp_qstr_frozen_const_pool
+endif
+
+CFLAGS += -include ./include/__fixstdheader.h
+
+# Flags for optional C++ source code
+CXXFLAGS += $(filter-out -std=c99,$(CFLAGS))
+
+########################################################################################
 
 SRC_DIR = \
 	src
 
 SRC_C = \
 	$(wildcard $(addsuffix /*.c,$(SRC_DIR))) \
+	$(wildcard $(addsuffix /*.c,$(PLATFORM_SRCDIR))) \
 	shared/libc/printf.c \
 	shared/libc/string0.c \
 	shared/libc/__errno.c \
@@ -167,38 +157,56 @@ SRC_C = \
 	shared/runtime/pyexec.c \
 	shared/runtime/stdout_helpers.c \
 	shared/runtime/sys_stdio_mphal.c \
-	$(BUILD)/frozen_content.c
+	$(SRC_MOD) \
+	$(BUILD)/frozen_content.c \
 
 
-SRC_CXX += \
+SRC_CXX = \
 	$(wildcard $(addsuffix /*.cc,$(SRC_DIR))) \
 	$(wildcard $(addsuffix /*.cpp,$(SRC_DIR))) \
 	$(wildcard $(addsuffix /*.cxx,$(SRC_DIR)))
 
-SRC_ASM =
+SRC_ASM = \
+	$(wildcard $(addsuffix /*.S,$(PLATFORM_SRCDIR))) \
+	$(wildcard $(addsuffix /*.S,$(PLATFORM_ASMDIR)))
 
-# modlwip.c 
+#SRC_ASM += src/__rt_entry.S
 
-EXTMOD_SRC_C +=extmod/modonewire.c
-EXTMOD_SRC_C +=extmod/modurandom.c
-EXTMOD_SRC_C +=extmod/moduasyncio.c
-EXTMOD_SRC_C +=extmod/moductypes.c
-EXTMOD_SRC_C +=extmod/moduzlib.c
-EXTMOD_SRC_C +=extmod/modujson.c
-EXTMOD_SRC_C +=extmod/modure.c
-EXTMOD_SRC_C +=extmod/moduheapq.c
-EXTMOD_SRC_C +=extmod/moduhashlib.c
-EXTMOD_SRC_C +=extmod/modubinascii.c
-EXTMOD_SRC_C +=extmod/moduselect.c
+#if has bluetooth or wifi
+#EXTMOD_SRC_C +=extmod/modbluetooth.c
+#EXTMOD_SRC_C +=extmod/lwip.c
+#endif
+
+EXTMOD_SRC_C +=extmod/modbtree.c
 EXTMOD_SRC_C +=extmod/modframebuf.c
+EXTMOD_SRC_C +=extmod/modnetwork.c
+EXTMOD_SRC_C +=extmod/modonewire.c
+EXTMOD_SRC_C +=extmod/moduasyncio.c
+EXTMOD_SRC_C +=extmod/modubinascii.c
+EXTMOD_SRC_C +=extmod/moducryptolib.c
+EXTMOD_SRC_C +=extmod/moductypes.c
+EXTMOD_SRC_C +=extmod/moduhashlib.c
+EXTMOD_SRC_C +=extmod/moduheapq.c
+EXTMOD_SRC_C +=extmod/modujson.c
+EXTMOD_SRC_C +=extmod/moduplatform.c
+EXTMOD_SRC_C +=extmod/modurandom.c
+EXTMOD_SRC_C +=extmod/modure.c
+EXTMOD_SRC_C +=extmod/moduselect.c
+EXTMOD_SRC_C +=extmod/modusocket.c
 EXTMOD_SRC_C +=extmod/modussl_axtls.c
-EXTMOD_SRC_C +=extmod/vfs.c
-EXTMOD_SRC_C +=extmod/vfs_reader.c
-EXTMOD_SRC_C +=extmod/vfs_fat.c
-EXTMOD_SRC_C +=extmod/vfs_fat_file.c
-EXTMOD_SRC_C +=extmod/vfs_fat_diskio.c
+EXTMOD_SRC_C +=extmod/modutimeq.c
+EXTMOD_SRC_C +=extmod/moduwebsocket.c
+EXTMOD_SRC_C +=extmod/moduzlib.c
+EXTMOD_SRC_C +=extmod/modwebrepl.c
 EXTMOD_SRC_C +=extmod/vfs_blockdev.c
+EXTMOD_SRC_C +=extmod/vfs_fat_diskio.c
+EXTMOD_SRC_C +=extmod/vfs_fat_file.c
+EXTMOD_SRC_C +=extmod/vfs_fat.c
+EXTMOD_SRC_C +=extmod/vfs_lfs.c
+EXTMOD_SRC_C +=extmod/vfs_reader.c
+EXTMOD_SRC_C +=extmod/vfs.c
 EXTMOD_SRC_C +=extmod/uos_dupterm.c
+EXTMOD_SRC_C +=extmod/utime_mphal.c
 EXTMOD_SRC_C +=extmod/machine_bitstream.c
 EXTMOD_SRC_C +=extmod/machine_i2c.c
 EXTMOD_SRC_C +=extmod/machine_mem.c
@@ -208,12 +216,6 @@ EXTMOD_SRC_C +=extmod/machine_pwm.c
 EXTMOD_SRC_C +=extmod/machine_signal.c
 EXTMOD_SRC_C +=extmod/machine_spi.c
 EXTMOD_SRC_C +=extmod/virtpin.c
-EXTMOD_SRC_C +=extmod/utime_mphal.c
-
-
-
-
-
 
 DRIVERS_SRC_C +=drivers/bus/softspi.c
 DRIVERS_SRC_C +=drivers/dht/dht.c
@@ -222,6 +224,8 @@ LIB_SRC_C = $(addprefix lib/,\
 	oofatfs/ff.c \
 	oofatfs/ffunicode.c \
 	crypto-algorithms/sha256.c \
+	littlefs/lfs2.c \
+	littlefs/lfs2_util.c \
 	libm/math.c \
 	libm/fmodf.c \
 	libm/nearbyintf.c \
@@ -251,18 +255,6 @@ LIB_SRC_C = $(addprefix lib/,\
 	libm/wf_tgamma.c \
 	)
 
-ifeq ($(CROSS), 1)
-SRC_C += $(wildcard $(addsuffix /*.c,$(PLATFORM_SRCDIR)))
-#SRC_ASM += src/__rt_entry.S
-SRC_ASM += $(wildcard $(addsuffix /*.S,$(PLATFORM_SRCDIR)))
-SRC_ASM += $(wildcard $(addsuffix /*.S,$(PLATFORM_ASMDIR)))
-endif
-
-SRC_C += $(SRC_MOD)
-
-SRC_CXX += $(SRC_MOD_CXX)
-
-SRC_QSTR += $(SRC_MOD) $(SRC_MOD_CXX)
 
 OBJ += $(PY_CORE_O) $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_CXX:.cpp=.o))
@@ -271,30 +263,19 @@ OBJ += $(addprefix $(BUILD)/, $(SRC_CXX:.cc=.o))
 OBJ += $(addprefix $(BUILD)/, $(EXTMOD_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(DRIVERS_SRC_C:.c=.o))
-
-ifeq ($(CROSS), 1)
 OBJ += $(addprefix $(BUILD)/, $(SRC_ASM:.S=.o))
-endif
 
-ifneq ($(FROZEN_MANIFEST),)
-CFLAGS += -DMICROPY_MODULE_FROZEN_STR
-CFLAGS += -DMICROPY_MODULE_FROZEN_MPY
-CFLAGS += -DMICROPY_QSTR_EXTRA_POOL=mp_qstr_frozen_const_pool
-endif
 
-ifeq ($(CROSS), 1)
-CFLAGS += -include ./include/__fixstdheader.h
-endif
+#-ljson -llwip_open -lpp -lnet80211 -lwpa -lphy -lnet80211
+#LIBS += dsp c cc-rt m semi ssp stdc++ supc++
+LIBS += semi
+########################################################################################
 
-ifeq ($(CROSS), 1)
 all: $(BUILD)/firmware.dfu
-else
-all: $(BUILD)/firmware.elf
-endif
 
 $(BUILD)/firmware.elf: $(OBJ)
 	$(ECHO) "LINK $@"
-	$(Q)$(LD) $(LDFLAGS) -o $@ $^ $(addprefix -L,$(LIBDIRS)) $(addprefix -l,$(LIBS))
+	$(LD) $(LDFLAGS) -o $@ $^ $(addprefix -L,$(PLATFORM_LIBDIR)) $(addprefix -l,$(LIBS))
 	$(Q)$(SIZE) $@
 	$(Q)$(ECHO) ========================================
 
@@ -306,6 +287,8 @@ $(BUILD)/firmware.dfu: $(BUILD)/firmware.elf
 	@ls --color=auto -Ugo $(BUILD)/firmware.elf $(BUILD)/firmware.bin
 	@./tools/postbuild.sh firmware $(SDKPath) $(BUILD) $(zip) $(sign) $(encrypt)
 
+DFU = $(TOP)/tools/dfu.py
+PYDFU = $(TOP)/tools/pydfu.py
 deploy: $(BUILD)/firmware.dfu
 	$(ECHO) "Writing $< to the board"
 	$(Q)$(PYTHON) $(PYDFU) -u $<

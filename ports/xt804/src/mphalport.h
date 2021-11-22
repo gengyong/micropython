@@ -107,7 +107,7 @@ extern void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len);
 
 #define mp_hal_pin_obj_t        const machine_pin_obj_t *
 #define mp_hal_get_pin_obj(o)   (o)
-#define mp_hal_pin_name(p)      ((p)->name)
+#define mp_hal_pin_name(p)      ((const char*)(&((p)->name)))
 #define mp_hal_pin_input(p)     mp_hal_pin_config((p), MP_HAL_PIN_MODE_INPUT, MP_HAL_PIN_PULL_NONE, 0)
 #define mp_hal_pin_output(p)    mp_hal_pin_config((p), MP_HAL_PIN_MODE_OUTPUT, MP_HAL_PIN_PULL_NONE, 0)
 //++ GengYong: TODO

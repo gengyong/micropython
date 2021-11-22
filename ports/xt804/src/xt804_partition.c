@@ -52,15 +52,50 @@ enum {
     XT804_PARTITION_SUBTYPE_ANY
 };
 
+#define XT804_IMAGE_HEADER_ADDR (0x080D0000)
+#define XT804_IMAGE_MAGIC_NUMER (0xA0FFFF9F)
+
+#define XT804_IMAGE_ATTR_TYPE_DATA (XT804_PARTITION_TYPE_DATA)
+
+typedef struct {
+    uint32_t img_type:4;
+    uint32_t code_encrypt: 1;
+    uint32_t pricey_sel: 3;
+    uint32_t signature: 1;
+    uint32_t zip_type: 1;
+    uint32_t reserved: 1;
+    uint32_t erase_block_en: 1;
+    uint32_t erase_always: 1;
+} xt804_partition_run_image_header_image_attr_t;
+
+typedef struct {
+    uint32_t magic_no;
+    xt804_partition_run_image_header_image_attr_t img_attr;
+    uint32_t img_addr;
+    uint32_t img_len;
+    uint32_t img_header_addr;
+    uint32_t upgrade_img_addr;
+    uint32_t org_checksum;
+    uint32_t upd_no;
+    uint32_t ver;
+    uint32_t next;
+    uint32_t hd_checksum;
+    uint8_t  label[8];
+    uint32_t reserved;
+} xt804_partition_run_image_header_t;
+
+
 typedef struct {
     uint32_t address;
     uint32_t size;
 } xt804_partition_t;
 
+
 const xt804_partition_t DEFAULT_DATA_PARTITION = {
-    0x100000,
+    0x80D0400,
     0x100000
 };
+
 
 typedef struct _xt804_partition_obj_t {
     mp_obj_base_t base;
@@ -89,33 +124,82 @@ STATIC mp_obj_t xt804_partition_make_new(const mp_obj_type_t *type, size_t n_arg
     mp_arg_check_num(n_args, n_kw, 1, 1, false);
 
     // Get requested partition
-    const xt804_partition_t *part = &DEFAULT_DATA_PARTITION;
+    const xt804_partition_t *part = NULL;
 
-    /*
-    // GengYong: TODO:
     if (mp_obj_is_int(all_args[0])) {
         // Integer given, get that particular partition
         switch (mp_obj_get_int(all_args[0])) {
-            case MACHINE_PARTITION_BOOT:
-                part = esp_ota_get_boot_partition();
+            case XT804_PARTITION_BOOT:
+                // GengYong: TODO:
+                //esp_ota_get_boot_partition();
                 break;
-            case MACHINE_PARTITION_RUNNING:
-                part = esp_ota_get_running_partition();
+            case XT804_PARTITION_RUNNING:
+                part = &DEFAULT_DATA_PARTITION;
                 break;
             default:
                 mp_raise_ValueError(NULL);
         }
     } else {
-        // String given, search for partition with that label
-        const char *label = mp_obj_str_get_str(all_args[0]);
-        // GengYong: TODO:
-        hal_warn("not implement yet. <- machine_partition_make_new: label: %s", label);
-        // part = esp_partition_find_first(MACHINE_PARTITION_TYPE_APP, MACHINE_PARTITION_SUBTYPE_ANY, label);
-        // if (part == NULL) {
-        //     part = esp_partition_find_first(MACHINE_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, label);
-        // }
+        part = &DEFAULT_DATA_PARTITION;
     }
-    */
+    
+    // GengYong: TODO:
+    // hal_warn("not implement yet. <- machine_partition_make_new: label: %s", label);
+    // part = esp_partition_find_first(MACHINE_PARTITION_TYPE_APP, MACHINE_PARTITION_SUBTYPE_ANY, label);
+    // if (part == NULL) {
+    //     part = esp_partition_find_first(MACHINE_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, label);
+    // }
+
+    if (part != NULL) {
+        xt804_partition_run_image_header_t image_info;
+        image_info.magic_no = XT804_IMAGE_MAGIC_NUMER;
+        image_info.img_attr.img_type = XT804_IMAGE_ATTR_TYPE_DATA;
+        image_info.img_attr.code_encrypt = 0;
+        image_info.img_attr.pricey_sel = 0;
+        image_info.img_attr.signature = 0;
+        image_info.img_attr.zip_type = 0;
+        image_info.img_attr.erase_block_en = 1;
+        image_info.img_attr.erase_always = 0;
+        image_info.img_addr = part->address;
+        image_info.img_len = part->size;
+        image_info.img_header_addr = XT804_IMAGE_HEADER_ADDR;
+        image_info.upgrade_img_addr = 0;
+        image_info.org_checksum = 0;
+        image_info.upd_no = 0;
+        image_info.ver = 1;
+        image_info.next = XT804_IMAGE_HEADER_ADDR;
+
+        const char *label = mp_obj_str_get_str(all_args[0]);
+        if (label != NULL) {
+            strncpy((char*)(&image_info.label), label, sizeof(image_info.label));
+        }
+        HAL_FLASH_Write(image_info.img_header_addr, (uint8_t*)(&image_info), sizeof(image_info));
+
+        /*
+        uint32_t next_image_header = XT804_IMAGE_HEADER_ADDR;
+        xt804_partition_run_image_header_t image_info;
+        while (next_image_header) {
+            HAL_FLASH_Read(next_image_header, image_info, sizeof(image_info));
+            if (image_info.magic_no == 0xA0FFFF9F) {
+                if (strncmp(image_info.label, label, sizeof(image_info.label)) == 0) {
+                    return MP_OBJ_FROM_PTR(xt804_partition_new(&DEFAULT_DATA_PARTITION));
+                } else {
+                    if (image_info.next == next_image_header) {
+                        break;
+                    } else {
+                        next_image_header = image_info.next;
+                    }
+                }
+            } else {
+                break;
+            }
+        }
+
+        xt804_partition_run_image_header_t new_image_info;
+        uint32_t new_image_header = next_image_header + sizeof(xt804_partition_run_image_header_t);
+        image_info.next = next_image_header;
+        */
+    }
 
     // Return new object
     return MP_OBJ_FROM_PTR(xt804_partition_new(part));
@@ -153,11 +237,27 @@ STATIC mp_obj_t xt804_partition_find(size_t n_args, const mp_obj_t *pos_args, mp
     */
    TDEBUG("xt804_partition_find: label: %s", label ? label : "");
    TDEBUG("xt804_partition_find: type: %d sub_type: %d", args[ARG_type].u_int, args[ARG_subtype].u_int);
-   
+
     mp_obj_t list = mp_obj_new_list(0, NULL);
-    if (args[ARG_type].u_int == XT804_PARTITION_TYPE_DATA) {
-        //mp_obj_list_append(list, MP_OBJ_FROM_PTR(xt804_partition_new(&DEFAULT_DATA_PARTITION)));
+    mp_obj_list_append(list, MP_OBJ_FROM_PTR(xt804_partition_new(&DEFAULT_DATA_PARTITION)));
+    /*
+    uint32_t next_image_header = XT804_IMAGE_HEADER_ADDR;
+    xt804_partition_run_image_header_t image_info;
+    while (next_image_header) {
+        HAL_FLASH_Read(next_image_header, &image_info, sizeof(image_info));
+        if (image_info.magic_no == XT804_IMAGE_MAGIC_NUMER) {
+            if (label != NULL) {
+                if (strncmp(image_info.label, label, sizeof(image_info.label)) == 0) {
+                    mp_obj_list_append(list, MP_OBJ_FROM_PTR(xt804_partition_new(&DEFAULT_DATA_PARTITION)));
+                }
+            } else if (args[ARG_type].u_int == image_info.img_attr.img_type) {
+                mp_obj_list_append(list, MP_OBJ_FROM_PTR(xt804_partition_new(&DEFAULT_DATA_PARTITION)));
+            }
+        } else {
+            next_image_header = 0;
+        }
     }
+    */
     return list;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(xt804_partition_find_fun_obj, 0, xt804_partition_find);
@@ -178,21 +278,29 @@ STATIC mp_obj_t xt804_partition_info(mp_obj_t self_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(xt804_partition_info_obj, xt804_partition_info);
 
 STATIC mp_obj_t xt804_partition_readblocks(size_t n_args, const mp_obj_t *args) {
-    TDEBUG("xt804_partition_readblocks");
+    //TDEBUG("xt804_partition_readblocks");
     xt804_partition_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     uint32_t offset = mp_obj_get_int(args[1]) * BLOCK_SIZE_BYTES;
-    TDEBUG("xt804_partition_readblocks: offset:%u", offset);
+    //TDEBUG("xt804_partition_readblocks: offset:%u", offset);
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_WRITE);
-    TDEBUG("xt804_partition_readblocks: mp_get_buffer_raise: bufinfo:0x%X, len: %d", bufinfo.buf, bufinfo.len);
+    //TDEBUG("xt804_partition_readblocks: mp_get_buffer_raise: bufinfo:0x%X, len: %d", bufinfo.buf, bufinfo.len);
     if (n_args == 4) {
         offset += mp_obj_get_int(args[3]);
-        TDEBUG("xt804_partition_readblocks: n_args == 4, new offset:%d", offset);
+        //TDEBUG("xt804_partition_readblocks: n_args == 4, new offset:%d", offset);
     }
     //check_esp_err(esp_partition_read(self->part, offset, bufinfo.buf, bufinfo.len));
-    TDEBUG("xt804_partition_readblocks: nHAL_FLASH_Read:%d", offset);
+    //TDEBUG("xt804_partition_readblocks: HAL_FLASH_Read:(offset:%u, len:%d)", offset, bufinfo.len);
     HAL_FLASH_Read(self->part->address + offset, bufinfo.buf, bufinfo.len);
-    TDEBUG("xt804_partition_readblocks: done");
+    // printf("\r\n[");
+    // for (int i = 0; i < MIN(bufinfo.len, 64); i++) {
+    //     printf("%2X", ((char*)(bufinfo.buf))[i]);
+    //     if ((i+1) % 8 == 0) {
+    //         printf(" ");
+    //     }
+    // }
+    // printf("]\r\n");
+    //TDEBUG("xt804_partition_readblocks: done");
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(xt804_partition_readblocks_obj, 3, 4, xt804_partition_readblocks);

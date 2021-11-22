@@ -3,6 +3,7 @@ from flashbdev import bdev
 
 
 def check_bootsec():
+    print("check_bootsec")
     buf = bytearray(bdev.ioctl(5, 0))  # 5 is SEC_SIZE
     bdev.readblocks(0, buf)
     empty = True
@@ -31,6 +32,7 @@ by firmware programming).
 
 
 def setup():
+    print("start setup()")
     check_bootsec()
     print("Performing initial setup")
     uos.VfsLfs2.mkfs(bdev)

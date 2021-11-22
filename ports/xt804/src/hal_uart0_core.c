@@ -10,7 +10,7 @@
 
 // ================ configuration section ===
 // define REPL(listen on uart0) input buffer size
-#define REPL_INPUT_BUFFER_SIZE  (512)
+#define REPL_INPUT_BUFFER_SIZE  (256)
 // ==========================================
 static int16_t repl_buffer_tail = 0;
 static int16_t repl_buffer_iter = 0;

@@ -1,5 +1,6 @@
 #include "wm_hal.h"
 
+/*
 void HAL_MspInit(void)
 {
 }
@@ -7,6 +8,7 @@ void HAL_MspInit(void)
 void HAL_MspDeInit(void)
 {
 }
+*/
 
 void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 {

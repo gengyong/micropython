@@ -44,7 +44,9 @@ void mp_hal_delay_us(uint32_t us) {
 
 uint64_t mp_hal_time_ns(void) {
     struct timeval tv;
-    gettimeofday(&tv, NULL);
+    //gettimeofday(&tv, NULL);
+    tv.tv_sec = 1577808000;
+    tv.tv_usec = 0;
     uint64_t ns = tv.tv_sec * 1000000000ULL;
     ns += (uint64_t)tv.tv_usec * 1000ULL;
     return ns;

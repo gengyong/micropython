@@ -5,7 +5,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2016 Damien P. George
+ * Copyright (c) 2021 Geng Yong
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,38 +43,38 @@
 
 
 STATIC const machine_pin_obj_t machine_pin_obj[] = {
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_0, 0, 0},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_1, 0, 1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_2, 0, 2},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_3, 0, 3},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_4, 0, 4},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_5, 0, 5},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_6, 0, 6},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_7, 0, 7},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_8, 0, 8},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_9, 0, 9},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_10, 0, 10},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_11, 0, 11},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_12, 0, 12},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_13, 0, 13},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_14, 0, 14},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_15, 0, 15},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_0, 0, 32},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_1, 0, 33},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_2, 0, 34},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_3, 0, 35},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_4, 0, 36},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_5, 0, 37},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_6, 0, 38},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_7, 0, 39},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_8, 0, 40},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_9, 0, 41},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_10, 0, 42},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_11, 0, 43},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_12, 0, 44},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_13, 0, 45},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_14, 0, 46},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_15, 0, 47},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_0,  {'A', '0', 0, 0}, 0, 0},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_1,  {'A', '1', 0, 0}, 0, 1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_2,  {'A', '2', 0, 0}, 0, 2},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_3,  {'A', '3', 0, 0}, 0, 3},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_4,  {'A', '4', 0, 0}, 0, 4},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_5,  {'A', '5', 0, 0}, 0, 5},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_6,  {'A', '6', 0, 0}, 0, 6},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_7,  {'A', '7', 0, 0}, 0, 7},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_8,  {'A', '8', 0, 0}, 0, 8},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_9,  {'A', '9', 0, 0}, 0, 9},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_10, {'A', '1', '0', 0}, 0, 10},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_11, {'A', '1', '1', 0}, 0, 11},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_12, {'A', '1', '2', 0}, 0, 12},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_13, {'A', '1', '3', 0}, 0, 13},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_14, {'A', '1', '4', 0},  0, 14},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_15, {'A', '1', '5', 0}, 0, 15},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_0,  {'B', '0', 0, 0}, 0, 32},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_1,  {'B', '1', 0, 0}, 0, 33},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_2,  {'B', '2', 0, 0}, 0, 34},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_3,  {'B', '3', 0, 0}, 0, 35},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_4,  {'B', '4', 0, 0}, 0, 36},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_5,  {'B', '5', 0, 0}, 0, 37},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_6,  {'B', '6', 0, 0}, 0, 38},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_7,  {'B', '7', 0, 0}, 0, 39},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_8,  {'B', '8', 0, 0}, 0, 40},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_9,  {'B', '9', 0, 0}, 0, 41},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_10, {'B', '1', '0', 0}, 0, 42},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_11, {'B', '1', '1', 0}, 0, 43},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_12, {'B', '1', '2', 0}, 0, 44},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_13, {'B', '1', '3', 0}, 0, 45},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_14, {'B', '1', '4', 0}, 0, 46},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_15, {'B', '1', '5', 0}, 0, 47},
 };
 
 // forward declaration
@@ -285,23 +285,30 @@ STATIC mp_obj_t machine_pin_value(size_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_pin_value_obj, 1, 2, machine_pin_value);
 
-// pin.off()
-STATIC mp_obj_t machine_pin_off(mp_obj_t self_in) {
+// pin.low()
+STATIC mp_obj_t machine_pin_low(mp_obj_t self_in) {
     machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    TDEBUG("machine_pin_off: pin(%u)", self->id);
     HAL_GPIO_WritePin(self->gpio, self->pin, GPIO_PIN_RESET);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_off_obj, machine_pin_off);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_low_obj, machine_pin_low);
 
-// pin.on()
-STATIC mp_obj_t machine_pin_on(mp_obj_t self_in) {
+// pin.high()
+STATIC mp_obj_t machine_pin_high(mp_obj_t self_in) {
     machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    TDEBUG("machine_pin_on: pin(%u)", self->id);
     HAL_GPIO_WritePin(self->gpio, self->pin, GPIO_PIN_SET);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_on_obj, machine_pin_on);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_high_obj, machine_pin_high);
+
+// pin.toggle()
+STATIC mp_obj_t machine_pin_toggle(mp_obj_t self_in) {
+    machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    HAL_GPIO_TogglePin(self->gpio, self->pin);
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_toggle_obj, machine_pin_toggle);
+
 
 // pin.irq(handler=None, trigger=IRQ_FALLING|IRQ_RISING)
 STATIC mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -374,8 +381,11 @@ STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     // instance methods
     { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&machine_pin_init_obj) },
     { MP_ROM_QSTR(MP_QSTR_value), MP_ROM_PTR(&machine_pin_value_obj) },
-    { MP_ROM_QSTR(MP_QSTR_off), MP_ROM_PTR(&machine_pin_off_obj) },
-    { MP_ROM_QSTR(MP_QSTR_on), MP_ROM_PTR(&machine_pin_on_obj) },
+    { MP_ROM_QSTR(MP_QSTR_low), MP_ROM_PTR(&machine_pin_low_obj) },
+    { MP_ROM_QSTR(MP_QSTR_high), MP_ROM_PTR(&machine_pin_high_obj) },
+    { MP_ROM_QSTR(MP_QSTR_off), MP_ROM_PTR(&machine_pin_low_obj) },
+    { MP_ROM_QSTR(MP_QSTR_on), MP_ROM_PTR(&machine_pin_high_obj) },
+    { MP_ROM_QSTR(MP_QSTR_toggle), MP_ROM_PTR(&machine_pin_toggle_obj) },
     { MP_ROM_QSTR(MP_QSTR_irq), MP_ROM_PTR(&machine_pin_irq_obj) },
 
     // class constants

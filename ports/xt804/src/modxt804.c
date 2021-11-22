@@ -65,6 +65,65 @@ STATIC mp_obj_t xt804_toggle_color_print(size_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(xt804_toggle_color_print_obj, 0, 1, xt804_toggle_color_print);
 
+STATIC mp_obj_t xt804_read_int32(const mp_obj_t addr) {
+    mp_int_t address = mp_obj_get_int(addr);
+    return mp_obj_new_int(*((int32_t*)(address)));
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(xt804_read_int32_obj, xt804_read_int32);
+
+STATIC mp_obj_t xt804_read_int16(const mp_obj_t addr) {
+    mp_int_t address = mp_obj_get_int(addr);
+    return mp_obj_new_int(*((int16_t*)(address)));
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(xt804_read_int16_obj, xt804_read_int16);
+
+STATIC mp_obj_t xt804_read_int8(const mp_obj_t addr) {
+    mp_int_t address = mp_obj_get_int(addr);
+    return mp_obj_new_int(*((int8_t*)(address)));
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(xt804_read_int8_obj, xt804_read_int8);
+
+STATIC mp_obj_t xt804_write_int32(const mp_obj_t addr, const mp_obj_t val) {
+    mp_int_t address = mp_obj_get_int(addr);
+    if (address < 0x20000000) {
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid address(must >= 0x2000000)"));
+    }
+    mp_int_t value = mp_obj_get_int(val);
+    *((int32_t*)(address)) = (value & 0xFFFFFFFF);
+    return mp_obj_new_int(*((int32_t*)(address)));
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(xt804_write_int32_obj, xt804_write_int32);
+
+STATIC mp_obj_t xt804_write_int16(const mp_obj_t addr, const mp_obj_t val) {
+    mp_int_t address = mp_obj_get_int(addr);
+    if (address < 0x20000000) {
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid address(must >= 0x2000000)"));
+    }
+    mp_int_t value = mp_obj_get_int(val);
+    if ((value & 0xFFFF) != 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("int16 value out of range"));
+    }
+    *((int16_t*)(address)) = (value & 0xFFFF);
+    return mp_obj_new_int(*((int16_t*)(address)));
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(xt804_write_int16_obj, xt804_write_int16);
+
+STATIC mp_obj_t xt804_write_int8(const mp_obj_t addr, const mp_obj_t val) {
+    mp_int_t address = mp_obj_get_int(addr);
+    if (address < 0x20000000) {
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid address(must >= 0x2000000)"));
+    }
+    mp_int_t value = mp_obj_get_int(val);
+    if ((value & 0xFF) != 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("int8 value out of range"));
+    }
+    
+    *((int8_t*)(address)) = (value & 0xFF);
+    return mp_obj_new_int(*((int8_t*)(address)));
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(xt804_write_int8_obj, xt804_write_int8);
+
+
 #if 0
 STATIC mp_obj_t esp32_wake_on_touch(const mp_obj_t wake) {
 
@@ -210,6 +269,13 @@ STATIC const mp_rom_map_elem_t xt804_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_xt804) },
 
     { MP_ROM_QSTR(MP_QSTR_color_print), MP_ROM_PTR(&xt804_toggle_color_print_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read_int32), MP_ROM_PTR(&xt804_read_int32_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read_int16), MP_ROM_PTR(&xt804_read_int16_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read_int8), MP_ROM_PTR(&xt804_read_int8_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write_int32), MP_ROM_PTR(&xt804_write_int32_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write_int16), MP_ROM_PTR(&xt804_write_int16_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write_int8), MP_ROM_PTR(&xt804_write_int8_obj) },
+
     //-- GengYong: TODO:
     //{ MP_ROM_QSTR(MP_QSTR_wake_on_touch), MP_ROM_PTR(&esp32_wake_on_touch_obj) },
     //{ MP_ROM_QSTR(MP_QSTR_wake_on_ext0), MP_ROM_PTR(&esp32_wake_on_ext0_obj) },
