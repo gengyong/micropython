@@ -39,6 +39,7 @@ STATIC mp_obj_t mp_utime_localtime(size_t n_args, const mp_obj_t *args) {
     timeutils_struct_time_t tm;
     mp_int_t seconds;
     if (n_args == 0 || args[0] == mp_const_none) {
+        TDEBUG("mp_utime_time:gettimeofday");
         struct timeval tv;
         gettimeofday(&tv, NULL);
         seconds = tv.tv_sec;
@@ -77,7 +78,7 @@ STATIC mp_obj_t mp_utime_mktime(mp_obj_t tuple) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mp_utime_mktime_obj, mp_utime_mktime);
 
 STATIC mp_obj_t mp_utime_time(void) {
-    TDEBUG("utime_time");
+    TDEBUG("mp_utime_time:gettimeofday");
     struct timeval tv;
     gettimeofday(&tv, NULL);
     TDEBUG("gettimeofday: %l", tv.tv_sec);
@@ -86,7 +87,7 @@ STATIC mp_obj_t mp_utime_time(void) {
 MP_DEFINE_CONST_FUN_OBJ_0(mp_utime_time_obj, mp_utime_time);
 
 STATIC const mp_rom_map_elem_t mp_module_utime_globals_table[] = {
-    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_utime) },
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_time) },
 
     { MP_ROM_QSTR(MP_QSTR_gmtime), MP_ROM_PTR(&mp_utime_localtime_obj) },
     { MP_ROM_QSTR(MP_QSTR_localtime), MP_ROM_PTR(&mp_utime_localtime_obj) },

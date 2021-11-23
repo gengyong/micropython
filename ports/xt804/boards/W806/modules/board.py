@@ -11,6 +11,9 @@ class _internal_led:
     def off(self):
         self.pin.on()
 
+    def toggle(self):
+        self.pin.toggle()
+
 led0 = _internal_led('B0')
 led1 = _internal_led('B1')
 led2 = _internal_led('B2')

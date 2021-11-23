@@ -41,3 +41,6 @@
 [submodule "lib/pico-sdk"]
 	path = lib/pico-sdk
 	url = https://github.com/raspberrypi/pico-sdk.git
+[submodule "ports/xt804/sdk/wm-sdk-w806"]
+	path = ports/xt804/sdk/wm-sdk-w806
+	url = https://github.com/IOsetting/wm-sdk-w806.git

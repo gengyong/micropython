@@ -6,9 +6,9 @@
 // Use the minimal starting configuration (disables all optional features).
 //#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_MINIMUM)
 //#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_CORE_FEATURES)
-#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_BASIC_FEATURES)
+//#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_BASIC_FEATURES)
 //#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_EXTRA_FEATURES)
-//#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_FULL_FEATURES)
+#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_FULL_FEATURES)
 //#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_EVERYTHING)
 
 // You can disable the built-in MicroPython compiler by setting the following
@@ -20,13 +20,6 @@
 typedef intptr_t mp_int_t; // must be pointer size
 typedef uintptr_t mp_uint_t; // must be pointer size
 typedef long mp_off_t;
-
-typedef int32_t __int32_t;
-typedef uint32_t __uint32_t;
-typedef int16_t __int16_t;
-typedef uint16_t __uint16_t;
-typedef int8_t __int8_t;
-typedef uint8_t __uint8_t;
 
 // We need to provide a declaration/definition of alloca()
 #include <alloca.h>
@@ -146,19 +139,19 @@ typedef uint8_t __uint8_t;
 #define MICROPY_PY_SYS_STDIO_BUFFER         (1)
 #define MICROPY_PY_UERRNO                   (1)
 #define MICROPY_PY_URANDOM                  (1)
+#define MICROPY_PY_URANDOM_EXTRA_FUNCS      (1)
 #define MICROPY_PY_USELECT                  (1)
 #define MICROPY_PY_UTIME_MP_HAL             (1)
 #define MICROPY_PY_OS_DUPTERM               (1)
 #define MICROPY_PY_NETWORK                  (1)
 #define MICROPY_PY_UWEBSOCKET               (1)
-//#define MICROPY_PY_BTREE                    (1)
 #define MICROPY_PY_FRAMEBUF                 (1)
 #define MICROPY_PY_ONEWIRE                  (1)
 #define MICROPY_PY_UASYNCIO                 (1)
 #define MICROPY_PY_UBINASCII                (1)
 #define MICROPY_PY_UCRYPTOLIB               (1)
 #define MICROPY_PY_UCTYPES                  (1)
-#define MICROPY_PY_UHASHLIB                 (0)
+#define MICROPY_PY_UHASHLIB                 (1)
 #define MICROPY_PY_UHASHLIB_SHA1            (1)
 #define MICROPY_PY_UHASHLIB_SHA256          (1)
 #define MICROPY_PY_UHASHLIB_MD5             (1)
@@ -168,13 +161,12 @@ typedef uint8_t __uint8_t;
 #define MICROPY_PY_URE                      (1)
 #define MICROPY_PY_USELECT                  (1)
 #define MICROPY_PY_USOCKET                  (1)
-//#define MICROPY_PY_USSL                     (1)
-//#define MICROPY_SSL_AXTLS                   (1)
 #define MICROPY_PY_UTIMEQ                   (1)
 #define MICROPY_PY_UWEBSOCKET               (1)
 #define MICROPY_PY_UZLIB                    (1)
 #define MICROPY_PY_WEBREPL                  (1)
 #define MICROPY_PY_BLUETOOTH                (0)
+#define MICROPY_VFS                         (1)
 
 
 // config machine modules
@@ -192,12 +184,9 @@ typedef uint8_t __uint8_t;
 ///#define MICROPY_PY_THREAD_GIL_VM_DIVISOR    (32)
 
 
-// fatfs configuration
-#define MICROPY_VFS                         (1)
-//#define MICROPY_VFS_FAT                     (1)
-//#define MICROPY_VFS_LFS2                    (1)
-
-
+#ifndef MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE
+#define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (1)
+#endif
 
 // fatfs configuration
 #define MICROPY_FATFS_ENABLE_LFN            (1)
@@ -207,10 +196,6 @@ typedef uint8_t __uint8_t;
 
 #define mp_type_fileio                      mp_type_vfs_lfs2_fileio
 #define mp_type_textio                      mp_type_vfs_lfs2_textio
-
-#ifndef MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE
-#define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (1)
-#endif
 
 // use vfs's functions for import stat and builtin open
 #if MICROPY_VFS
@@ -222,30 +207,6 @@ typedef uint8_t __uint8_t;
 #define MICROPY_PORT_BUILTINS \
     { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&mp_builtin_open_obj) },
 
-#if 0
-// extra built in names to add to the global namespace
-#define MICROPY_PORT_BUILTINS \
-     { MP_OBJ_NEW_QSTR(MP_QSTR_input), (mp_obj_t)&mp_builtin_input_obj }, \
-     { MP_OBJ_NEW_QSTR(MP_QSTR_open), (mp_obj_t)&mp_builtin_open_obj },
-
-// extra built in modules to add to the list of known ones
-extern const struct _mp_obj_module_t utime_module;
-extern const struct _mp_obj_module_t uos_module;
-extern const struct _mp_obj_module_t mp_module_usocket;
-extern const struct _mp_obj_module_t mp_module_machine;
-extern const struct _mp_obj_module_t mp_module_network;
-extern const struct _mp_obj_module_t mp_module_onewire;
-
-
-#define MICROPY_PORT_BUILTIN_MODULES \
-     { MP_OBJ_NEW_QSTR(MP_QSTR_utime), (mp_obj_t)&utime_module }, \
-     { MP_OBJ_NEW_QSTR(MP_QSTR_uos), (mp_obj_t)&uos_module }, \
-     { MP_OBJ_NEW_QSTR(MP_QSTR_usocket), (mp_obj_t)&mp_module_usocket }, \
-     { MP_OBJ_NEW_QSTR(MP_QSTR_machine), (mp_obj_t)&mp_module_machine }, \
-     { MP_OBJ_NEW_QSTR(MP_QSTR_network), (mp_obj_t)&mp_module_network }, \
-     { MP_OBJ_NEW_QSTR(MP_QSTR_onewire), (mp_obj_t)&mp_module_onewire }, \
-
-#endif
 
 extern const struct _mp_obj_module_t mp_module_machine;
 extern const struct _mp_obj_module_t mp_module_network;
@@ -276,10 +237,10 @@ extern const struct _mp_obj_module_t xt804_module;
 
 #define MICROPY_PORT_BUILTIN_MODULES \
     { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&mp_module_machine) }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR__onewire), (mp_obj_t)&mp_module_onewire }, \
-    { MP_ROM_QSTR(MP_QSTR_xt804), MP_ROM_PTR(&xt804_module) }, \
+    { MP_ROM_QSTR(MP_QSTR__onewire), (mp_obj_t)&mp_module_onewire }, \
     { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_uos) }, \
     { MP_ROM_QSTR(MP_QSTR_utime), (mp_obj_t)&mp_module_utime }, \
+    { MP_ROM_QSTR(MP_QSTR_xt804), MP_ROM_PTR(&xt804_module) }, \
     SOCKET_BUILTIN_MODULE \
     NETWORK_BUILTIN_MODULE \
 
@@ -331,7 +292,7 @@ extern const struct _mp_obj_module_t xt804_module;
     /*MICROPY_PORT_ROOT_POINTER_BLUETOOTH_BTSTACK */\
     \
     /* root pointers defined by a board */ \
-    /*    MICROPY_BOARD_ROOT_POINTERS */\
+    /*MICROPY_BOARD_ROOT_POINTERS */\
 
 
 //----------------------------------------------------------

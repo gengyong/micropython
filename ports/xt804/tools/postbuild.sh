@@ -20,18 +20,20 @@ REVERSE=$(tput smso)
 UNDERLINE=$(tput smul)
 
 #############################
-TargetName=$1
-SDKPath=$2
-DistPath=$3
+FirmwareName=$1
+WMTOOL=$2
+SDKPath=$3
+DistPath=$4
 
-zip_type=$4
-signature=$5
-code_encrypt=$6
+zip_type=$5
+signature=$6
+code_encrypt=$7
+
 prikey_sel=0
 sign_pubkey_src=0
 
 printf "========================================\n"
-printf "Target: %s\n" $DistPath/$TargetName
+printf "Target: %s\n" $DistPath/$FirmwareName
 printf "SDK: %s\n" $SDKPath
 
 sec_img_header=8002000
@@ -82,28 +84,29 @@ printf "========================================\n"
 printf "Image Type: 0x%x\n" $img_type
 printf "========================================\n"
 
-WMTOOL="$SDKPath"/tools/W806/wm_tool.exe
+
 #SUM=md5sum
 SUM=crc32
 OPENSSL=openssl
 
-ImageName=$TargetName
+ImageName=$FirmwareName
 if [ $code_encrypt == 1 ]
 then
-  ImageName=$TargetName"_encrypted"
+  ImageName=$FirmwareName"_encrypted"
 fi
 
 if [ $code_encrypt == 1 ]
 then
     let prikey_sel=$prikey_sel+1
-    $OPENSSL enc -aes-128-ecb -in $DistPath/"$TargetName".bin -out $DistPath/"$TargetName"_enc.bin -K 30313233343536373839616263646566 -iv 01010101010101010101010101010101
+    $OPENSSL enc -aes-128-ecb -in $DistPath/"$FirmwareName".bin -out $DistPath/"$FirmwareName"_enc.bin -K 30313233343536373839616263646566 -iv 01010101010101010101010101010101
     $OPENSSL rsautl -encrypt -in "$SDKPath"/tools/W806/ca/key.txt -inkey "$SDKPath"/tools/W806/ca/capub_"$prikey_sel".pem -pubin -out key_en.dat
-    cat $DistPath/"$TargetName"_enc.bin key_en.dat > $DistPath/"$TargetName"_enc_key.bin
-    cat $DistPath/"$TargetName"_enc_key.bin "$SDKPath"/tools/W806/ca/capub_"$prikey_sel"_N.dat > $DistPath/"$TargetName"_enc_key_N.bin  
-    $WMTOOL -b $DistPath/"$TargetName"_enc_key_N.bin -o $DistPath/"$ImageName" -it $img_type -fc 0 -ra $run_img_pos -ih $run_img_header -ua $upd_img_pos -nh 0 -un 0  > /dev/null
-    rm -rf $DistPath/"$TargetName"_enc.bin $DistPath/"$TargetName"_enc_key.bin $DistPath/"$TargetName"_enc_key_N.bin
+    cat $DistPath/"$FirmwareName"_enc.bin key_en.dat > $DistPath/"$FirmwareName"_enc_key.bin
+    cat $DistPath/"$FirmwareName"_enc_key.bin "$SDKPath"/tools/W806/ca/capub_"$prikey_sel"_N.dat > $DistPath/"$FirmwareName"_enc_key_N.bin  
+    $WMTOOL -b $DistPath/"$FirmwareName"_enc_key_N.bin -o $DistPath/"$ImageName" -it $img_type -fc 0 -ra $run_img_pos -ih $run_img_header -ua $upd_img_pos -nh 0 -un 0  > /dev/null
+    rm -rf $DistPath/"$FirmwareName"_enc.bin $DistPath/"$FirmwareName"_enc_key.bin $DistPath/"$FirmwareName"_enc_key_N.bin
 else
-    $WMTOOL -b $DistPath/"$TargetName".bin -o $DistPath/"$ImageName" -it $img_type -fc 0 -ra $run_img_pos -ih $run_img_header -ua $upd_img_pos -nh 0 -un 0 > /dev/null
+    $WMTOOL -b $DistPath/"$FirmwareName".bin -o $DistPath/"$ImageName" -it $img_type -fc 0 -ra $run_img_pos -ih $run_img_header -ua $upd_img_pos -nh 0 -un 0 > /dev/null
+    #$WMTOOL -b $DistPath/"$FirmwareName".bin -o $DistPath/"$ImageName" -it $img_type -fc 0 -ra $run_img_pos -ih $run_img_header -nh 0 -un 0 > /dev/null
 fi
 
 if [ $signature == 1 ]
@@ -115,7 +118,7 @@ then
     then
         $WMTOOL -b $DistPath/"$ImageName"_sign.img -o $DistPath/"$ImageName"_sign -it $img_type -fc 1 -ra $run_img_pos -ih $run_img_header -ua $upd_img_pos -nh 0  -un 0  > /dev/null
         mv $DistPath/"$ImageName"_sign_gz.img $DistPath/"$ImageName"_sign_ota.img
-        printf "%s\t" $TargetName
+        printf "%s\t" $FirmwareName
         if [ $code_encrypt == 1 ]
         then
             printf "[%s]" $GREEN"ENCRYPED"$NORMAL
@@ -124,15 +127,15 @@ then
         fi
         printf "[%s]" $GREEN"SIGNED"$NORMAL
         printf "[%s]" $GREEN"ZIPPED"$NORMAL
-        printf "\n *  %s(%s)\n" $GREEN$DistPath/"$TargetName".bin$NORMAL $YELLOW$(stat --format=%s $DistPath/"$TargetName".bin)$NORMAL
+        printf "\n *  %s(%s)\n" $GREEN$DistPath/"$FirmwareName".bin$NORMAL $YELLOW$(stat --format=%s $DistPath/"$FirmwareName".bin)$NORMAL
         printf " -> %s(%s)\n" $GREEN$DistPath/"$ImageName"_sign.img$NORMAL $YELLOW$(stat --format=%s $DistPath/"$ImageName"_sign.img)$NORMAL
         printf " -> %s(%s)\n" $GREEN$DistPath/"$ImageName"_sign_ota.img$NORMAL $YELLOW$(stat --format=%s $DistPath/"$ImageName"_sign_ota.img)$NORMAL
-        $SUM $DistPath/"$TargetName".elf $DistPath/"$TargetName".bin $DistPath/"$ImageName"_sign.img $DistPath/"$ImageName"_sign_ota.img
+        $SUM $DistPath/"$FirmwareName".elf $DistPath/"$FirmwareName".bin $DistPath/"$ImageName"_sign.img $DistPath/"$ImageName"_sign_ota.img
     else
         $WMTOOL -b "$SDKPath"/tools/W806/W806_secboot.bin -o "$SDKPath"/tools/W806/W806_secboot -it 0 -fc 0 -ra $sec_img_pos -ih $sec_img_header -ua $upd_img_pos -nh $run_img_header -un 0  > /dev/null
         cat "$SDKPath"/tools/W806/W806_secboot.img $DistPath/"$ImageName"_sign.img > $DistPath/"$ImageName"_sign.fls
 
-        printf "%s\t" $TargetName
+        printf "%s\t" $FirmwareName
         if [ $code_encrypt == 1 ]
         then
             printf "[%s]" $GREEN"ENCRYPED"$NORMAL
@@ -141,16 +144,16 @@ then
         fi
         printf "[%s]" $GREEN"SIGNED"$NORMAL
         printf "[%s]" $GREY"UNZIPPED"$NORMAL
-        printf "\n *  %s(%s)\n" $GREEN$DistPath/"$TargetName".bin$NORMAL $YELLOW$(stat --format=%s $DistPath/"$TargetName".bin)$NORMAL
+        printf "\n *  %s(%s)\n" $GREEN$DistPath/"$FirmwareName".bin$NORMAL $YELLOW$(stat --format=%s $DistPath/"$FirmwareName".bin)$NORMAL
         printf " -> %s(%s)\n" $GREEN$DistPath/"$ImageName"_sign.img$NORMAL $YELLOW$(stat --format=%s $DistPath/"$ImageName"_sign.img)$NORMAL
         printf " -> %s(%s)\n" $GREEN$DistPath/"$ImageName"_sign.fls$NORMAL $YELLOW$(stat --format=%s $DistPath/"$ImageName"_sign.fls)$NORMAL
-        $SUM $DistPath/"$TargetName".elf $DistPath/"$TargetName".bin $DistPath/"$ImageName"_sign.img $DistPath/"$ImageName"_sign.fls
+        $SUM $DistPath/"$FirmwareName".elf $DistPath/"$FirmwareName".bin $DistPath/"$ImageName"_sign.img $DistPath/"$ImageName"_sign.fls
     fi
 elif [ $zip_type == 1 ]
 then
     $WMTOOL -b $DistPath/"$ImageName".img -o $DistPath/"$ImageName" -it $img_type -fc 1 -ra $run_img_pos -ih $run_img_header -ua $upd_img_pos -nh 0  -un 0  > /dev/null
     mv $DistPath/"$ImageName"_gz.img $DistPath/"$ImageName"_unsign_ota.img
-    printf "%s\t" $TargetName
+    printf "%s\t" $FirmwareName
     if [ $code_encrypt == 1 ]
     then
         printf "[%s]" $GREEN"ENCRYPED"$NORMAL
@@ -159,15 +162,16 @@ then
     fi
     printf "[%s]" $GREY"UNSIGNED"$NORMAL
     printf "[%s]" $GREEN"ZIPPED"$NORMAL
-    printf "\n *  %s(%s)\n" $GREEN$DistPath/"$TargetName".bin$NORMAL $YELLOW$(stat --format=%s $DistPath/"$TargetName".bin)$NORMAL
+    printf "\n *  %s(%s)\n" $GREEN$DistPath/"$FirmwareName".bin$NORMAL $YELLOW$(stat --format=%s $DistPath/"$FirmwareName".bin)$NORMAL
     printf " -> %s(%s)\n" $GREEN$DistPath/"$ImageName".img$NORMAL $YELLOW$(stat --format=%s $DistPath/"$ImageName".img)$NORMAL
     printf " -> %s(%s)\n" $GREEN$DistPath/"$ImageName"_unsign_ota.img$NORMAL $YELLOW$(stat --format=%s $DistPath/"$ImageName"_unsign_ota.img)$NORMAL
-    $SUM $DistPath/"$TargetName".elf $DistPath/"$TargetName".bin $DistPath/"$ImageName".img $DistPath/"$ImageName"_unsign_ota.img
+    $SUM $DistPath/"$FirmwareName".elf $DistPath/"$FirmwareName".bin $DistPath/"$ImageName".img $DistPath/"$ImageName"_unsign_ota.img
 else
     $WMTOOL -b "$SDKPath"/tools/W806/W806_secboot.bin -o "$SDKPath"/tools/W806/W806_secboot -it 0 -fc 0 -ra $sec_img_pos -ih $sec_img_header -ua $upd_img_pos -nh $run_img_header -un 0  > /dev/null
+    #$WMTOOL -b "$SDKPath"/tools/W806/W806_secboot.bin -o "$SDKPath"/tools/W806/W806_secboot -it 0 -fc 0 -ra $sec_img_pos -ih $sec_img_header -nh $run_img_header -un 0  > /dev/null
     cat "$SDKPath"/tools/W806/W806_secboot.img $DistPath/"$ImageName".img > $DistPath/"$ImageName"_unsign.fls
 
-    printf "%s\t" $TargetName
+    printf "%s\t" $FirmwareName
     if [ $code_encrypt == 1 ]
     then
         printf "[%s]" $GREEN"ENCRYPED"$NORMAL
@@ -176,10 +180,10 @@ else
     fi
     printf "[%s]" $GREY"UNSIGNED"$NORMAL
     printf "[%s]" $GREY"UNZIPPED"$NORMAL
-    printf "\n *  %s(%s)\n" $GREEN$DistPath/"$TargetName".bin$NORMAL $YELLOW$(stat --format=%s $DistPath/"$TargetName".bin)$NORMAL
+    printf "\n *  %s(%s)\n" $GREEN$DistPath/"$FirmwareName".bin$NORMAL $YELLOW$(stat --format=%s $DistPath/"$FirmwareName".bin)$NORMAL
     printf " -> %s(%s)\n" $GREEN$DistPath/"$ImageName".img$NORMAL $YELLOW$(stat --format=%s $DistPath/"$ImageName".img)$NORMAL
     printf " -> %s(%s)\n" $GREEN$DistPath/"$ImageName"_unsign.fls$NORMAL $YELLOW$(stat --format=%s $DistPath/"$ImageName"_unsign.fls)$NORMAL
-    $SUM $DistPath/"$TargetName".elf $DistPath/"$TargetName".bin $DistPath/"$ImageName".img "$SDKPath"/tools/W806/W806_secboot.img $DistPath/"$ImageName"_unsign.fls
+    $SUM $DistPath/"$FirmwareName".elf $DistPath/"$FirmwareName".bin $DistPath/"$ImageName".img "$SDKPath"/tools/W806/W806_secboot.img $DistPath/"$ImageName"_unsign.fls
 fi
 
 rm -rf $DistPath/"$ImageName".img $DistPath/"$ImageName"_sign.img

@@ -30,13 +30,15 @@
 #ifndef INCLUDED_MPHALPORT_H
 #define INCLUDED_MPHALPORT_H
 
-#include <wm_cpu.h>
-#include <wm_gpio.h>
+
+//================================================
+// stdio
+#include "py/ringbuf.h"
+extern ringbuf_t stdin_ringbuf;
+
 
 //========================================================
 // abstruact HAL layer's implemention goes here
-
-
 #define mp_hal_quiet_timing_enter()             MICROPY_BEGIN_ATOMIC_SECTION()
 #define mp_hal_quiet_timing_exit(irq_state)     MICROPY_END_ATOMIC_SECTION(irq_state)
 
@@ -61,8 +63,8 @@
 // implemention goes xt804_mphal.c
 uint64_t mp_hal_time_ns(void);
 
-// uintptr_t mp_hal_stdio_poll(uintptr_t) 
-#define mp_hal_stdio_poll(f)            (0) // no implemention
+uintptr_t mp_hal_stdio_poll(uintptr_t);
+//#define mp_hal_stdio_poll(f)            (0) // no implemention
 
 // below mp_hal_stdio_* functions was implemented in hal_uart0_core.c.
 //   mp_hal_stdin_rx_chr
@@ -120,7 +122,7 @@ extern void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len);
 #define mp_hal_pin_read(p)      HAL_GPIO_ReadPin((p)->gpio, (p)->pin)
 #define mp_hal_pin_write(p, v)  ((v) ? mp_hal_pin_high(p) : mp_hal_pin_low(p))
 
-void mp_hal_gpio_clock_enable(GPIO_TypeDef *gpio);
+void mp_hal_gpio_clock_enable(pin_gpio_t *gpio);
 void mp_hal_pin_config(mp_hal_pin_obj_t pin, uint32_t mode, uint32_t pull, uint32_t alt);
 bool mp_hal_pin_config_alt(mp_hal_pin_obj_t pin, uint32_t mode, uint32_t pull, uint8_t fn, uint8_t unit);
 void mp_hal_pin_config_speed(mp_hal_pin_obj_t pin_obj, uint32_t speed);
@@ -139,9 +141,6 @@ void mp_hal_get_mac_ascii(int idx, size_t chr_off, size_t chr_len, char *dest);
 //================================================
 #include "shared/runtime/interrupt_char.h"
 
-//================================================
-#include "py/ringbuf.h"
-extern ringbuf_t stdin_ringbuf;
 
 
 

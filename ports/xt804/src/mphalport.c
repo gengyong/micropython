@@ -54,8 +54,8 @@ uint64_t mp_hal_time_ns(void) {
 
 //================================================
 // ringbuf for dupterm
-STATIC uint8_t stdin_ringbuf_array[260];
-ringbuf_t stdin_ringbuf = {stdin_ringbuf_array, sizeof(stdin_ringbuf_array), 0, 0};
+//STATIC uint8_t stdin_ringbuf_array[260];
+//ringbuf_t stdin_ringbuf = {stdin_ringbuf_array, sizeof(stdin_ringbuf_array), 0, 0};
 
 
 //#include "usb.h"

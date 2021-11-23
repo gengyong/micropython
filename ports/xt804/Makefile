@@ -15,12 +15,15 @@ ExtraLinkOption=-Wl,-zmax-page-size=1024
 #ToolChainPath=/usr/local/lib/cskytools-uclibc
 #ExtraLinkOption=-Wl,-zmax-page-size=1024
 ########################################################################################
-# Setup sdk path
-SDKPath =./sdk/WM_SDK_$(TargetBoard)
+# Setup sdk
+GIT_SUBMODULES = ports/xt804/sdk/wm-sdk-w806
+SDKPath =./sdk/wm-sdk-w806
+########################################################################################
+WMTOOL=$(SDKPath)/tools/$(TargetBoard)/wm_tool
 ########################################################################################
 # MicroPython feature configurations
 MICROPY_ROM_TEXT_COMPRESSION ?= 1
-MICROPY_VFS_FAT = 1
+MICROPY_VFS_FAT = 0
 MICROPY_VFS_LFS2 = 1
 MICROPY_PY_USSL = 1
 MICROPY_SSL_AXTLS = 1
@@ -45,7 +48,6 @@ AR = $(CROSS_COMPILE)ar rcu
 ########################################################################################
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h
-#QSTR_GLOBAL_DEPENDENCIES = mpconfigboard.h
 ########################################################################################
 # frozen python scripts
 FROZEN_MANIFEST = boards/$(TargetBoard)/manifest.py
@@ -54,7 +56,7 @@ FROZEN_MANIFEST = boards/$(TargetBoard)/manifest.py
 include $(TOP)/py/py.mk
 ########################################################################################
 # setup submodules, run 'make submodules' to get.
-GIT_SUBMODULES = lib/axtls lib/berkeley-db-1.xx lib/lwip
+GIT_SUBMODULES += lib/axtls lib/berkeley-db-1.xx lib/lwip 
 ########################################################################################
 COPT = -O2 -g3 -Wall
 ########################################################################################
@@ -110,11 +112,6 @@ ifeq ($(prod),)
 CC_DEFAULT_OPTIONS +=-DDEBUG
 endif
 ########################################################################################
-
-#INC += $(addprefix -I,$(PLATFORM_INCDIR))
-#INC += -I$(TOP)/lib/lwip/src/include -I$(TOP)/extmod/lwip-include
-
-
 CFLAGS = $(INC) $(addprefix -I,$(PLATFORM_INCDIR)) $(CC_DEFAULT_OPTIONS) $(COPT) $(CFLAGS_MOD)
 SFLAGS = $(addprefix -I,$(PLATFORM_ASMINC)) $(AS_DEFAULT_OPTIONS)
 LDFLAGS = $(LD_DEFAULT_OPTIONS)
@@ -135,7 +132,6 @@ CFLAGS += -include ./include/__fixstdheader.h
 
 # Flags for optional C++ source code
 CXXFLAGS += $(filter-out -std=c99,$(CFLAGS))
-
 ########################################################################################
 
 SRC_DIR = \
@@ -160,7 +156,6 @@ SRC_C = \
 	$(SRC_MOD) \
 	$(BUILD)/frozen_content.c \
 
-
 SRC_CXX = \
 	$(wildcard $(addsuffix /*.cc,$(SRC_DIR))) \
 	$(wildcard $(addsuffix /*.cpp,$(SRC_DIR))) \
@@ -169,8 +164,6 @@ SRC_CXX = \
 SRC_ASM = \
 	$(wildcard $(addsuffix /*.S,$(PLATFORM_SRCDIR))) \
 	$(wildcard $(addsuffix /*.S,$(PLATFORM_ASMDIR)))
-
-#SRC_ASM += src/__rt_entry.S
 
 #if has bluetooth or wifi
 #EXTMOD_SRC_C +=extmod/modbluetooth.c
@@ -218,12 +211,13 @@ EXTMOD_SRC_C +=extmod/machine_spi.c
 EXTMOD_SRC_C +=extmod/virtpin.c
 
 DRIVERS_SRC_C +=drivers/bus/softspi.c
+DRIVERS_SRC_C +=drivers/bus/softqspi.c
 DRIVERS_SRC_C +=drivers/dht/dht.c
+DRIVERS_SRC_C +=drivers/memory/spiflash.c
 
 LIB_SRC_C = $(addprefix lib/,\
 	oofatfs/ff.c \
 	oofatfs/ffunicode.c \
-	crypto-algorithms/sha256.c \
 	littlefs/lfs2.c \
 	littlefs/lfs2_util.c \
 	libm/math.c \
@@ -275,7 +269,7 @@ all: $(BUILD)/firmware.dfu
 
 $(BUILD)/firmware.elf: $(OBJ)
 	$(ECHO) "LINK $@"
-	$(LD) $(LDFLAGS) -o $@ $^ $(addprefix -L,$(PLATFORM_LIBDIR)) $(addprefix -l,$(LIBS))
+	$(Q)$(LD) $(LDFLAGS) -o $@ $^ $(addprefix -L,$(PLATFORM_LIBDIR)) $(addprefix -l,$(LIBS))
 	$(Q)$(SIZE) $@
 	$(Q)$(ECHO) ========================================
 
@@ -285,7 +279,10 @@ encrypt := $(if $(encrypt),$(encrypt),0)
 $(BUILD)/firmware.dfu: $(BUILD)/firmware.elf
 	@$(OBJCOPY) -O binary $(BUILD)/firmware.elf $(BUILD)/firmware.bin
 	@ls --color=auto -Ugo $(BUILD)/firmware.elf $(BUILD)/firmware.bin
-	@./tools/postbuild.sh firmware $(SDKPath) $(BUILD) $(zip) $(sign) $(encrypt)
+	@./tools/postbuild.sh firmware $(WMTOOL) $(SDKPath) $(BUILD) $(zip) $(sign) $(encrypt)
+
+sdk: submodules
+	$(Q)cd $(SDKPath);make;cd -
 
 DFU = $(TOP)/tools/dfu.py
 PYDFU = $(TOP)/tools/pydfu.py
