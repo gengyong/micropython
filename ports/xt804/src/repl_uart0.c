@@ -74,7 +74,7 @@ void gc_collect(void) {
 
 static void session_startup() {
     mp_stack_set_top((void *)STACK_TOP);
-    mp_stack_set_limit(STACK_TOP - D_SRAM_START);
+    mp_stack_set_limit(STACK_TOP - V_SRAM_START);
 
     //mp_hal_init(); //TODO:
 
@@ -122,7 +122,6 @@ void repl_listen_uart0() {
     mpy_hal_startup();
     session_startup();
 
-    TLOG("V-RAM:  [0x%X - 0x%X] SIZE: 0x%X (%d bytes)", V_SRAM_START, D_SRAM_START, (D_SRAM_START - V_SRAM_START), (D_SRAM_START - V_SRAM_START));
     TLOG("STACK:  [0x%X - 0x%X] SIZE: 0x%X (%dKB)", D_SRAM_START, STACK_TOP, (STACK_TOP - D_SRAM_START), (STACK_TOP - D_SRAM_START)>>10);
     TLOG("HEAP:   [0x%p - 0x%p] SIZE: 0x%X (%dKB)", HEAP_MEM, HEAP_MEM + sizeof(HEAP_MEM), sizeof(HEAP_MEM), sizeof(HEAP_MEM)>>10);
     TLOG("SYSTEM: [0x%X - 0x%X, 0x%X - 0x%X] SIZE: 0x%X (%dKB)", 

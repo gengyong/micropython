@@ -85,7 +85,19 @@ Q(PULL_DOWN)
 Q(PULL_NONE)
 Q(IRQ_RISING)
 Q(IRQ_FALLING)
-
+Q(IRQ_RISING_FALLING)
+Q(IRQ_HIGH_LEVEL)
+Q(IRQ_LOW_LEVEL)
+Q(handler)
+Q(hard)
+// ------------ pwm --------------------
+Q(channel)
+// ------------- adc -------------------
+Q(ADC)
+Q(read_u16)
+Q(read_voltage)
+Q(CORE_TEMP)
+Q(CORE_OFFSET)
 // ------------ network ----------------
 Q(route)
 Q(STA_IF)
@@ -117,6 +129,19 @@ Q(AF_INET6)
 Q(SOCK_STREAM)
 Q(SOCK_DGRAM)
 Q(SOCK_RAW)
+
+//---------------- RTC ----------------
+Q(datetime)
+Q(RTC)
+Q(left)
+Q(repeat)
+Q(wake)
+Q(alarm)
+Q(alarm_left)
+Q(alarm_cancel)
+Q(alarm_irq)
+Q(alarm_list)
+Q(Alarm)
 
 
 

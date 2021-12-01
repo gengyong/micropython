@@ -39,6 +39,7 @@
 
 #include "py/obj.h"
 #include "py/runtime.h"
+#include "py/gc.h"
 #include "shared/runtime/pyexec.h"
 #include "extmod/machine_bitstream.h"
 #include "extmod/machine_mem.h"
@@ -185,6 +186,89 @@ void machine_deinit(void) {
     is_soft_reset = 1;
 }
 
+// machine.info([dump_alloc_table])
+// Print out lots of information about the board.
+STATIC mp_obj_t machine_info(size_t n_args, const mp_obj_t *args) {
+    // get and print unique id; 96 bits
+    {
+        //byte *id = (byte *)MP_HAL_UNIQUE_ID_ADDRESS;
+        //printf("ID=%02x%02x%02x%02x:%02x%02x%02x%02x:%02x%02x%02x%02x\n", id[0], id[1], id[2], id[3], id[4], id[5], id[6], id[7], id[8], id[9], id[10], id[11]);
+    }
+
+    //printf("DEVID=0x%04x\nREVID=0x%04x\n", (unsigned int)HAL_GetDEVID(), (unsigned int)HAL_GetREVID());
+
+    // get and print clock speeds
+    // SYSCLK=168MHz, HCLK=168MHz, PCLK1=42MHz, PCLK2=84MHz
+    {
+        // printf("S=%u\nH=%u\nP1=%u\nP2=%u\n",
+        //     (unsigned int)HAL_RCC_GetSysClockFreq(),
+        //     (unsigned int)HAL_RCC_GetHCLKFreq(),
+        //     (unsigned int)HAL_RCC_GetPCLK1Freq(),
+        //     (unsigned int)HAL_RCC_GetPCLK2Freq());
+    }
+
+    // to print info about memory
+    {
+        // printf("_etext=%p\n", &_etext);
+        // printf("_sidata=%p\n", &_sidata);
+        // printf("_sdata=%p\n", &_sdata);
+        // printf("_edata=%p\n", &_edata);
+        // printf("_sbss=%p\n", &_sbss);
+        // printf("_ebss=%p\n", &_ebss);
+        // printf("_sstack=%p\n", &_sstack);
+        // printf("_estack=%p\n", &_estack);
+        // printf("_ram_start=%p\n", &_ram_start);
+        // printf("_heap_start=%p\n", &_heap_start);
+        // printf("_heap_end=%p\n", &_heap_end);
+        // printf("_ram_end=%p\n", &_ram_end);
+    }
+
+    // qstr info
+    {
+        size_t n_pool, n_qstr, n_str_data_bytes, n_total_bytes;
+        qstr_pool_info(&n_pool, &n_qstr, &n_str_data_bytes, &n_total_bytes);
+        printf("qstr:\n  n_pool=%u\n  n_qstr=%u\n  n_str_data_bytes=%u\n  n_total_bytes=%u\n", n_pool, n_qstr, n_str_data_bytes, n_total_bytes);
+    }
+
+    // GC info
+    {
+        gc_info_t info;
+        gc_info(&info);
+        printf("GC:\n");
+        printf("  %u total\n", info.total);
+        printf("  %u : %u\n", info.used, info.free);
+        printf("  1=%u 2=%u m=%u\n", info.num_1block, info.num_2block, info.max_block);
+    }
+
+    // free space on flash
+    {
+        #if MICROPY_VFS_FAT
+        for (mp_vfs_mount_t *vfs = MP_STATE_VM(vfs_mount_table); vfs != NULL; vfs = vfs->next) {
+            if (strncmp("/flash", vfs->str, vfs->len) == 0) {
+                // assumes that it's a FatFs filesystem
+                fs_user_mount_t *vfs_fat = MP_OBJ_TO_PTR(vfs->obj);
+                DWORD nclst;
+                f_getfree(&vfs_fat->fatfs, &nclst);
+                printf("LFS free: %u bytes\n", (uint)(nclst * vfs_fat->fatfs.csize * 512));
+                break;
+            }
+        }
+        #endif
+    }
+
+    #if MICROPY_PY_THREAD
+    //pyb_thread_dump();
+    #endif
+
+    if (n_args == 1) {
+        // arg given means dump gc allocation table
+        gc_dump_alloc_table();
+    }
+
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_info_obj, 0, 1, machine_info);
+
 STATIC mp_obj_t machine_wake_reason(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     //return MP_OBJ_NEW_SMALL_INT(esp_sleep_get_wakeup_cause());
     return mp_const_none;
@@ -234,6 +318,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(machine_enable_irq_obj, machine_enable_irq);
 STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_machine) },
     { MP_ROM_QSTR(MP_QSTR_unique_id), MP_ROM_PTR(&machine_unique_id_obj) },
+    { MP_ROM_QSTR(MP_QSTR_info), MP_ROM_PTR(&machine_info_obj) },
     { MP_ROM_QSTR(MP_QSTR_soft_reset), MP_ROM_PTR(&machine_soft_reset_obj) },
     //{ MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&machine_reset_obj) },
 
@@ -270,18 +355,17 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_Pin), MP_ROM_PTR(&machine_pin_type) },
     { MP_ROM_QSTR(MP_QSTR_Signal), MP_ROM_PTR(&machine_signal_type) },
     
-    
-    //{ MP_ROM_QSTR(MP_QSTR_ADC), MP_ROM_PTR(&machine_adc_type) },
+    { MP_ROM_QSTR(MP_QSTR_ADC), MP_ROM_PTR(&machine_adc_type) },
     #if MICROPY_PY_MACHINE_DAC
     { MP_ROM_QSTR(MP_QSTR_DAC), MP_ROM_PTR(&machine_dac_type) },
     #endif
-    //{ MP_ROM_QSTR(MP_QSTR_I2C), MP_ROM_PTR(&machine_hw_i2c_type) },
-    //{ MP_ROM_QSTR(MP_QSTR_SoftI2C), MP_ROM_PTR(&mp_machine_soft_i2c_type) },
+    { MP_ROM_QSTR(MP_QSTR_I2C), MP_ROM_PTR(&machine_hw_i2c_type) },
+    { MP_ROM_QSTR(MP_QSTR_SoftI2C), MP_ROM_PTR(&mp_machine_soft_i2c_type) },
     #if MICROPY_PY_MACHINE_I2S
     { MP_ROM_QSTR(MP_QSTR_I2S), MP_ROM_PTR(&machine_i2s_type) },
     #endif
-    //{ MP_ROM_QSTR(MP_QSTR_PWM), MP_ROM_PTR(&machine_pwm_type) },
-    //{ MP_ROM_QSTR(MP_QSTR_RTC), MP_ROM_PTR(&machine_rtc_type) },
+    { MP_ROM_QSTR(MP_QSTR_PWM), MP_ROM_PTR(&machine_pwm_type) },
+    { MP_ROM_QSTR(MP_QSTR_RTC), MP_ROM_PTR(&machine_rtc_type) },
     //{ MP_ROM_QSTR(MP_QSTR_SPI), MP_ROM_PTR(&machine_hw_spi_type) },
     //{ MP_ROM_QSTR(MP_QSTR_SoftSPI), MP_ROM_PTR(&mp_machine_soft_spi_type) },
     //{ MP_ROM_QSTR(MP_QSTR_UART), MP_ROM_PTR(&machine_uart_type) },

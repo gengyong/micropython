@@ -11,6 +11,10 @@ python 跑了起来，正在移植各种模块及硬件器件。
 3. bdev还有问题， 文件系统还不能建立。
 4. 兼容 pyboard.py 工具了， 其它工具没试。
 
+2021-11-29:
+1. GPIO IRQ 工作了。
+2. ADC 工作了。
+   
 ## 计划
 TBD.
 
@@ -128,22 +132,29 @@ Makefile 文件前部， 修改这两处：
 
     $ cd ports/xt804
 
-第一次编译时，先执行以下命令，下载依赖模块：
+第一次编译时，先执行以下命令，下载依赖SDK及模块：
 
-    $ make submodules
+    $ make sdk
 
 
 然后， 执行下边命令编译并生成最终rom文件：
 
     $ make
 
-生成的文件在 ports/xt804/build 目录下, 名为 firmware.unsign.fls, 用 Upgrader tool 刷到板上就好。
+生成的文件在 ports/xt804/build 目录下, 名为 micropython_xt804.fls。
 
 如果要签名的fls文件，make 时加上参数 sign=1, 如下：
 
     $make sign=1
 
-生成的文件名为 firmware_sign.fls。
+生成的文件名为 firmware_sign.fls, 同时会复制一份到 micropython_xt804.fls。
+
+如果要传到开发板上, make deploy 并加上串口参数，如下：
+
+    $make deploy com=ttyS4
+
+Windows 下串口号可以是COM1, COM2, COM3...等等，Linux下是ttyS1, ttyS2...或者ttyUSB0, ttyUSB1...等等。
+
 
 最终看到的编译输出如下：
 
@@ -171,7 +182,7 @@ It can run on any xt804 MCU (eg the W806 board).
 
 When you first time running build:
 
-    $ make submodules
+    $ make sdk
 
 
 By default the port will be built for the host machine:
@@ -189,6 +200,10 @@ for communication.  To build:
 
 If you previously built the Linux version, you will need to first run
 `make clean` to get rid of incompatible object files.
+
+deploy to target board:
+
+    #make deploy com=ttyS4
 
 
 

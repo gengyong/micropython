@@ -31,11 +31,17 @@
 #define INCLUDED_MPHALPORT_H
 
 
+#define MPY_ARRAY_INDEX(arr, obj) ((((uint32_t)(obj))-((uint32_t)(arr)))/sizeof(arr[0]))
+
 //================================================
 // stdio
 #include "py/ringbuf.h"
 extern ringbuf_t stdin_ringbuf;
 
+//================================================
+// rtc clock
+#include <wm_pmu.h>
+PMU_HandleTypeDef xt804_rtc_source;
 
 //========================================================
 // abstruact HAL layer's implemention goes here
@@ -87,7 +93,7 @@ extern void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len);
 // Basic GPIO HAL abstract layer goes here.
 #include "machine_pin.h"
 
-#define MP_HAL_PIN_FMT                  "%q"
+#define MP_HAL_PIN_FMT                  "%u"
 #define MP_HAL_PIN_MODE_INPUT           (GPIO_MODE_INPUT)
 #define MP_HAL_PIN_MODE_OUTPUT          (GPIO_MODE_OUTPUT)
 //? #define MP_HAL_PIN_MODE_ALT             (2) ?
@@ -108,8 +114,7 @@ extern void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len);
 //? #define MP_HAL_PIN_SPEED_VERY_HIGH      (GPIO_SPEED_FREQ_VERY_HIGH)
 
 #define mp_hal_pin_obj_t        const machine_pin_obj_t *
-#define mp_hal_get_pin_obj(o)   (o)
-#define mp_hal_pin_name(p)      ((const char*)(&((p)->name)))
+#define mp_hal_pin_name(p)      ((const char*)(&((p)->pin)))
 #define mp_hal_pin_input(p)     mp_hal_pin_config((p), MP_HAL_PIN_MODE_INPUT, MP_HAL_PIN_PULL_NONE, 0)
 #define mp_hal_pin_output(p)    mp_hal_pin_config((p), MP_HAL_PIN_MODE_OUTPUT, MP_HAL_PIN_PULL_NONE, 0)
 //++ GengYong: TODO
@@ -121,11 +126,13 @@ extern void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len);
 #define mp_hal_pin_od_high(p)   mp_hal_pin_high(p)
 #define mp_hal_pin_read(p)      HAL_GPIO_ReadPin((p)->gpio, (p)->pin)
 #define mp_hal_pin_write(p, v)  ((v) ? mp_hal_pin_high(p) : mp_hal_pin_low(p))
+#define mp_hal_gpio_clock_enable(p) __HAL_RCC_GPIO_CLK_ENABLE()
 
-void mp_hal_gpio_clock_enable(pin_gpio_t *gpio);
 void mp_hal_pin_config(mp_hal_pin_obj_t pin, uint32_t mode, uint32_t pull, uint32_t alt);
 bool mp_hal_pin_config_alt(mp_hal_pin_obj_t pin, uint32_t mode, uint32_t pull, uint8_t fn, uint8_t unit);
 void mp_hal_pin_config_speed(mp_hal_pin_obj_t pin_obj, uint32_t speed);
+
+mp_hal_pin_obj_t mp_hal_get_pin_obj(mp_obj_t);
 
 enum {
     MP_HAL_MAC_WLAN0 = 0,

@@ -3,6 +3,8 @@
 
 // options to control how MicroPython is built
 
+#define XT804_PIN_IRQ_COUNT (44)
+
 // Use the minimal starting configuration (disables all optional features).
 //#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_MINIMUM)
 //#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_CORE_FEATURES)
@@ -70,8 +72,8 @@ typedef long mp_off_t;
 #define MICROPY_MODULE_WEAK_LINKS           (1)
 #define MICROPY_QSTR_EXTRA_POOL             mp_qstr_frozen_const_pool
 #define MICROPY_CAN_OVERRIDE_BUILTINS       (1)
-#define MICROPY_USE_INTERNAL_ERRNO          (0) // errno.h from xtensa-esp32-elf/sys-include/sys
-#define MICROPY_USE_INTERNAL_PRINTF         (0) // ESP32 SDK requires its own printf
+#define MICROPY_USE_INTERNAL_ERRNO          (0)
+#define MICROPY_USE_INTERNAL_PRINTF         (0)
 #define MICROPY_ENABLE_SCHEDULER            (1)
 #define MICROPY_SCHEDULER_DEPTH             (8)
 #define MICROPY_PY_SYS_PLATFORM             "mpy-xt804"
@@ -174,10 +176,12 @@ typedef long mp_off_t;
 #define MICROPY_PY_MACHINE_BITSTREAM        (1)
 #define MICROPY_PY_MACHINE_PULSE            (1)
 #define MICROPY_PY_MACHINE_PIN_MAKE_NEW     mp_pin_make_new
-#define MICROPY_PY_MACHINE_SOFTI2C          (1)
 #define MICROPY_PY_MACHINE_PWM              (1)
 #define MICROPY_PY_MACHINE_SPI              (1)
 #define MICROPY_PY_MACHINE_SOFTSPI          (1)
+#define MICROPY_PY_MACHINE_I2C              (1)
+#define MICROPY_PY_MACHINE_SOFTI2C          (1)
+
 
 ///#define MICROPY_PY_THREAD                   (1)
 ///#define MICROPY_PY_THREAD_GIL               (1)
@@ -248,10 +252,15 @@ extern const struct _mp_obj_module_t xt804_module;
 #define MICROPY_PORT_NETWORK_INTERFACES
 
 //----------------------------------------------------------
+#ifndef MICROPY_BOARD_ROOT_POINTERS
+#define MICROPY_BOARD_ROOT_POINTERS
+#endif
+//----------------------------------------------------------
 #define MP_STATE_PORT MP_STATE_VM
+
 #define MICROPY_PORT_ROOT_POINTERS \
     const char *readline_hist[8]; \
-    mp_obj_t machine_pin_irq_handler[44]; \
+    mp_obj_t machine_pin_irq_handler[XT804_PIN_IRQ_COUNT]; \
     NETWORK_ROOT_POINTERS \
     \
     /*mp_obj_t pyb_hid_report_desc; */\
@@ -292,7 +301,7 @@ extern const struct _mp_obj_module_t xt804_module;
     /*MICROPY_PORT_ROOT_POINTER_BLUETOOTH_BTSTACK */\
     \
     /* root pointers defined by a board */ \
-    /*MICROPY_BOARD_ROOT_POINTERS */\
+    MICROPY_BOARD_ROOT_POINTERS
 
 
 //----------------------------------------------------------

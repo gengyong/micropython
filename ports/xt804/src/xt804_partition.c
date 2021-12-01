@@ -37,44 +37,33 @@
 #include <wm_internal_flash.h>
 
 #define BLOCK_SIZE_BYTES (INSIDE_FLS_SECTOR_SIZE)
-#define INTERNAL_FLASH_ADDR (0x08000000)
-#define INTERNAL_FLASH_SIZE (2 * 0x100000)
+#define INTERNAL_FLASH_ADDR (INSIDE_FLS_BASE_ADDR)
+#define INTERNAL_FLASH_SIZE (INSIDE_FLS_END_ADDR - INSIDE_FLS_BASE_ADDR)
 
 /*
- 0x81FFFFF ------- partition data end (2M internal flash)
- |
- | partition data area (1534KB)
- |
- 0x8080400 ------- partition data 
- | partition header area (1KB)
- 0x8080000 ------- partition header
- 0x807FFFF ------- running image end
- |
- | running image data area (446KB)
- |
- 0x8010400 ------- running image data (len: ~0x4F6FC, 317KB)
- | running image header area (1KB)
- 0x8010000 ------- running image header
- 0x800FFFF ------- secboot data end
- |
- | secboot data area (54KB)
- |
- 0x8002400 ------- secboot data (len: ~0x7B5C, 30KB)
- | secboot header area (1KB)
- 0x8002000 ------- secboot header
+    0x8(x)FFFFF ------- partition data end ((x)M internal flash)
+    |
+    | partition data area (1534KB)
+    |
+    0x8080400 ------- partition data 
+    | partition header area (1KB)
+    0x8080000 ------- partition header
+    0x807FFFF ------- running image end
+    |
+    | running image data area (446KB)
+    |
+    0x8010400 ------- running image data (len: ~0x4F6FC, 317KB)
+    | running image header area (1KB)
+    0x8010000 ------- running image header
+    0x800FFFF ------- secboot data end
+    |
+    | secboot data area (54KB)
+    |
+    0x8002400 ------- secboot data (len: ~0x7B5C, 30KB)
+    | secboot header area (1KB)
+    0x8002000 ------- secboot header
 */
 
-// enum {
-//     XT804_PARTITION_BOOT,
-//     XT804_PARTITION_RUNNING,
-// };
-
-// enum {
-//     XT804_PARTITION_TYPE_APP = 0xA,
-//     XT804_PARTITION_TYPE_DATA = 0xD,
-// };
-
-#define XT804_IMAGE_MAGIC_NUMER (0xA0FFFF9F)
 
 #define XT804_PARTITION_HEADER_ADDR (0x08080000)
 #define XT804_PARTITION_DATA_ADDR   (0x08080400)
@@ -83,18 +72,8 @@
 #define XT804_PARTITION_TYPE_APP (0xA)
 #define XT804_PARTITION_TYPE_DATA (0xD)
 
+#define XT804_IMAGE_MAGIC_NUMER (0xA0FFFF9F)
 #define XT804_IMAGE_ATTR_TYPE_DATA (XT804_PARTITION_TYPE_DATA)
-
-// typedef struct {
-//     uint32_t img_type:4;
-//     uint32_t code_encrypt: 1;
-//     uint32_t pricey_sel: 3;
-//     uint32_t signature: 1;
-//     uint32_t zip_type: 1;
-//     uint32_t reserved: 1;
-//     uint32_t erase_block_en: 1;
-//     uint32_t erase_always: 1;
-// } xt804_partition_header_image_attr_t;
 
 typedef struct {
     uint32_t magic_no;
@@ -227,24 +206,7 @@ STATIC mp_obj_t xt804_partition_find(size_t n_args, const mp_obj_t *pos_args, mp
     // return list;
 
     mp_obj_t list = mp_obj_new_list(0, NULL);
-    TDEBUG("DEFAULT_DATA_PARTITION: addr:0x%X, size:%d", DEFAULT_DATA_PARTITION.address, DEFAULT_DATA_PARTITION.size);
     mp_obj_list_append(list, MP_OBJ_FROM_PTR(xt804_partition_new(&DEFAULT_DATA_PARTITION)));
-    /*
-    xt804_partition_t * part = &DEFAULT_DATA_PARTITION;
-    HAL_FLASH_Read(XT804_PARTITION_HEADER_ADDR, (uint8_t*)part, sizeof(xt804_partition_t));
-    if (part->magic_no == XT804_IMAGE_MAGIC_NUMER) {
-        if (part->img_header_addr == XT804_PARTITION_HEADER_ADDR) {
-            if (label != NULL) {
-                if (strncmp((const char *)(part->label), label, sizeof(part->label) == 0)) {
-                    if (args[ARG_type].u_int == part->img_attr.img_type) {
-                        mp_obj_list_append(list, MP_OBJ_FROM_PTR(xt804_partition_new(part)));
-                    }
-                }
-            }
-        }
-    }
-    */
-
     return list;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(xt804_partition_find_fun_obj, 0, xt804_partition_find);
@@ -272,11 +234,9 @@ STATIC mp_obj_t xt804_partition_readblocks(size_t n_args, const mp_obj_t *args) 
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_WRITE);
     //TDEBUG("xt804_partition_readblocks: mp_get_buffer_raise: bufinfo:0x%X, len: %d", bufinfo.buf, bufinfo.len);
-    if (n_args == 4) {
+    if (n_args > 3) {
         offset += mp_obj_get_int(args[3]);
-        //TDEBUG("xt804_partition_readblocks: n_args == 4, new offset:%d", offset);
     }
-    //check_esp_err(esp_partition_read(self->part, offset, bufinfo.buf, bufinfo.len));
     //TDEBUG("xt804_partition_readblocks: HAL_FLASH_Read:(offset:%u, len:%d)", offset, bufinfo.len);
     HAL_FLASH_Read(self->part->address + offset, bufinfo.buf, bufinfo.len);
     //TDEBUG("xt804_partition_readblocks: done");
@@ -285,49 +245,47 @@ STATIC mp_obj_t xt804_partition_readblocks(size_t n_args, const mp_obj_t *args) 
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(xt804_partition_readblocks_obj, 3, 4, xt804_partition_readblocks);
 
 STATIC mp_obj_t xt804_partition_writeblocks(size_t n_args, const mp_obj_t *args) {
-    TDEBUG("xt804_partition_writeblocks");
+    //TDEBUG("xt804_partition_writeblocks");
     xt804_partition_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     uint32_t offset = mp_obj_get_int(args[1]) * BLOCK_SIZE_BYTES;
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_READ);
-    if (n_args == 3) {
-        //check_esp_err(esp_partition_erase_range(self->part, offset, bufinfo.len));
-        TERROR("not implement yet. erase block(offset:0x%X) <- xt804_partition_writeblocks", offset);
-    } else {
+    if (n_args > 3) {
         offset += mp_obj_get_int(args[3]);
     }
-    //check_esp_err(esp_partition_write(self->part, offset, bufinfo.buf, bufinfo.len));
     HAL_FLASH_Write(self->part->address + offset, bufinfo.buf, bufinfo.len);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(xt804_partition_writeblocks_obj, 3, 4, xt804_partition_writeblocks);
 
 STATIC mp_obj_t xt804_partition_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t arg_in) {
-    TDEBUG("xt804_partition_ioctl");
+    //TDEBUG("xt804_partition_ioctl");
     xt804_partition_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_int_t cmd = mp_obj_get_int(cmd_in);
     switch (cmd) {
         case MP_BLOCKDEV_IOCTL_INIT:
-            TDEBUG("MP_BLOCKDEV_IOCTL_INIT");
+            //TDEBUG("MP_BLOCKDEV_IOCTL_INIT");
             return MP_OBJ_NEW_SMALL_INT(0);
         case MP_BLOCKDEV_IOCTL_DEINIT:
-            TDEBUG("MP_BLOCKDEV_IOCTL_DEINIT");
+            //TDEBUG("MP_BLOCKDEV_IOCTL_DEINIT");
             return MP_OBJ_NEW_SMALL_INT(0);
         case MP_BLOCKDEV_IOCTL_SYNC:
-            TDEBUG("MP_BLOCKDEV_IOCTL_SYNC");
+            //TDEBUG("MP_BLOCKDEV_IOCTL_SYNC");
             return MP_OBJ_NEW_SMALL_INT(0);
         case MP_BLOCKDEV_IOCTL_BLOCK_COUNT:
-            TDEBUG("MP_BLOCKDEV_IOCTL_BLOCK_COUNT: result: %d", self->part->size / BLOCK_SIZE_BYTES);
+            //TDEBUG("MP_BLOCKDEV_IOCTL_BLOCK_COUNT: result: %d", self->part->size / BLOCK_SIZE_BYTES);
             return MP_OBJ_NEW_SMALL_INT(self->part->size / BLOCK_SIZE_BYTES);
         case MP_BLOCKDEV_IOCTL_BLOCK_SIZE:
-            TDEBUG("MP_BLOCKDEV_IOCTL_BLOCK_SIZE: result: %d", BLOCK_SIZE_BYTES);
+            //TDEBUG("MP_BLOCKDEV_IOCTL_BLOCK_SIZE: result: %d", BLOCK_SIZE_BYTES);
             return MP_OBJ_NEW_SMALL_INT(BLOCK_SIZE_BYTES);
         case MP_BLOCKDEV_IOCTL_BLOCK_ERASE: {
-            TDEBUG("MP_BLOCKDEV_IOCTL_BLOCK_ERASE");
-            uint32_t offset = mp_obj_get_int(arg_in) * BLOCK_SIZE_BYTES;
-            TDEBUG("MP_BLOCKDEV_IOCTL_BLOCK_ERASE: offset:%u", offset);
-            //check_esp_err(esp_partition_erase_range(self->part, offset, BLOCK_SIZE_BYTES));
-            TERROR("not implement yet. erase block(offset:0x%x) <- xt804_partition_ioctl", offset);
+            //TDEBUG("MP_BLOCKDEV_IOCTL_BLOCK_ERASE");
+            uint32_t sector = mp_obj_int_get_uint_checked(arg_in);
+            if (sector < self->part->size / BLOCK_SIZE_BYTES) {
+                HAL_FLASH_erase(sector);
+            } else {
+                mp_raise_ValueError(MP_ERROR_TEXT("sector number out of range."));
+            }
             return MP_OBJ_NEW_SMALL_INT(0);
         }
         default:

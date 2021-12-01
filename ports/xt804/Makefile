@@ -20,6 +20,7 @@ GIT_SUBMODULES = ports/xt804/sdk/wm-sdk-w806
 SDKPath =./sdk/wm-sdk-w806
 ########################################################################################
 WMTOOL=$(SDKPath)/tools/$(TargetBoard)/wm_tool
+TARGET_ROM=micropython_xt804
 ########################################################################################
 # MicroPython feature configurations
 MICROPY_ROM_TEXT_COMPRESSION ?= 1
@@ -148,9 +149,8 @@ SRC_C = \
 	shared/readline/readline.c \
 	shared/timeutils/timeutils.c \
 	shared/runtime/pyexec.c \
-	shared/runtime/stdout_helpers.c \
+	shared/runtime/mpirq.c \
 	shared/runtime/interrupt_char.c \
-	shared/runtime/pyexec.c \
 	shared/runtime/stdout_helpers.c \
 	shared/runtime/sys_stdio_mphal.c \
 	$(SRC_MOD) \
@@ -265,7 +265,15 @@ OBJ += $(addprefix $(BUILD)/, $(SRC_ASM:.S=.o))
 LIBS += semi
 ########################################################################################
 
-all: $(BUILD)/firmware.dfu
+all: $(BUILD)/$(TARGET_ROM).fls
+
+zip := $(if $(zip),$(zip),0)
+sign := $(if $(sign),$(sign),0)
+encrypt := $(if $(encrypt),$(encrypt),0)
+$(BUILD)/$(TARGET_ROM).fls: $(BUILD)/firmware.elf
+	@$(OBJCOPY) -O binary $(BUILD)/firmware.elf $(BUILD)/firmware.bin
+	@ls --color=auto -Ugo $(BUILD)/firmware.elf $(BUILD)/firmware.bin
+	@./tools/postbuild.sh $(BUILD)/$(TARGET_ROM) $(BUILD)/firmware $(WMTOOL) $(SDKPath) $(zip) $(sign) $(encrypt)
 
 $(BUILD)/firmware.elf: $(OBJ)
 	$(ECHO) "LINK $@"
@@ -273,22 +281,23 @@ $(BUILD)/firmware.elf: $(OBJ)
 	$(Q)$(SIZE) $@
 	$(Q)$(ECHO) ========================================
 
-zip := $(if $(zip),$(zip),0)
-sign := $(if $(sign),$(sign),0)
-encrypt := $(if $(encrypt),$(encrypt),0)
-$(BUILD)/firmware.dfu: $(BUILD)/firmware.elf
-	@$(OBJCOPY) -O binary $(BUILD)/firmware.elf $(BUILD)/firmware.bin
-	@ls --color=auto -Ugo $(BUILD)/firmware.elf $(BUILD)/firmware.bin
-	@./tools/postbuild.sh firmware $(WMTOOL) $(SDKPath) $(BUILD) $(zip) $(sign) $(encrypt)
-
 sdk: submodules
 	$(Q)cd $(SDKPath);make;cd -
 
-DFU = $(TOP)/tools/dfu.py
-PYDFU = $(TOP)/tools/pydfu.py
-deploy: $(BUILD)/firmware.dfu
+ifeq ($(com),)
+deploy: $(BUILD)/$(TARGET_ROM).fls
+	$(ECHO) "please config Serial Port via com=<PORT>."
+	$(ECHO) "  on Windows, port should be COM1, COM2, COM3... etc."
+	$(ECHO) "  on Linux, port should be ttyS1, ttyS2... or ttyUSB0, ttyUSB1... etc."
+else
+WMTOOL_FLASH_OPTION =-rs at -ws 2M -ds 2M
+ifeq ($(erase),1)
+	WMTOOL_FLASH_OPTION += -eo all
+endif
+deploy: $(BUILD)/$(TARGET_ROM).fls
 	$(ECHO) "Writing $< to the board"
-	$(Q)$(PYTHON) $(PYDFU) -u $<
+	$(Q)$(WMTOOL) -c $(com) $(WMTOOL_FLASH_OPTION) -dl $<
+endif
 
 # Run emulation build on a POSIX system with suitable terminal settings
 run:

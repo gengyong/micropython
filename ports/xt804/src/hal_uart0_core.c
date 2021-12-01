@@ -56,66 +56,12 @@ void HAL_UART0_DeInit() {
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-	// if (repl_buffer_tail + huart->RxXferCount <= sizeof(repl_buffer)) {
-	// 	memcpy(repl_buffer + repl_buffer_tail, huart->pRxBuffPtr, huart->RxXferCount);
-	// 	repl_buffer_tail += huart->RxXferCount;
-	// } else {
-	// 	if (repl_buffer_iter > 0) {
-	// 		int left = repl_buffer_tail - repl_buffer_iter;
-    //         if (left > 0) {
-	// 		    memcpy(repl_buffer, repl_buffer + repl_buffer_iter, left);
-    //         }
-	// 		repl_buffer_iter = 0;
-	// 		repl_buffer_tail = left;
-	// 	}
-	// 	int left = sizeof(repl_buffer) - repl_buffer_tail;
-	// 	if (left >= huart->RxXferCount) {
-	// 		left = huart->RxXferCount;
-	// 	} else {
-	// 		TERROR("[REPL UART0] buffer overflow. %d bytes was dropped.", huart->RxXferCount - left);
-	// 	}
-	// 	memcpy(repl_buffer + repl_buffer_tail, huart->pRxBuffPtr, left);
-	// 	repl_buffer_tail += left;
-	// }
-
-    if (stdin_ringbuf.iput >= stdin_ringbuf.iget) {
-        int bytes = stdin_ringbuf.size - stdin_ringbuf.iput;
-        if (bytes >= huart->RxXferCount) {
-            memcpy(stdin_ringbuf.buf + stdin_ringbuf.iput, huart->pRxBuffPtr, huart->RxXferCount);
-            stdin_ringbuf.iput += huart->RxXferCount;
-        } else {
-            memcpy(stdin_ringbuf.buf + stdin_ringbuf.iput, huart->pRxBuffPtr, bytes);
-            int left =  huart->RxXferCount - bytes;
-            if (stdin_ringbuf.iget >= left) {
-                memcpy(stdin_ringbuf.buf,  huart->pRxBuffPtr + bytes, left);
-                stdin_ringbuf.iput = left;
-            } else {
-                memcpy(stdin_ringbuf.buf,  huart->pRxBuffPtr + bytes, stdin_ringbuf.iget);
-                stdin_ringbuf.iput = stdin_ringbuf.iget;
-                TERROR("[REPL UART0] buffer overflow(1). %d bytes was dropped.", stdin_ringbuf.iget - left);
-            }
-        }
-    } else if (stdin_ringbuf.iput < stdin_ringbuf.iget) {
-        int bytes = stdin_ringbuf.iget - stdin_ringbuf.iput;
-        if (bytes >= huart->RxXferCount) {
-            memcpy(stdin_ringbuf.buf + stdin_ringbuf.iput, huart->pRxBuffPtr, huart->RxXferCount);
-            stdin_ringbuf.iput += huart->RxXferCount;
-        } else {
-            memcpy(stdin_ringbuf.buf + stdin_ringbuf.iput, huart->pRxBuffPtr, bytes);
-            stdin_ringbuf.iput = stdin_ringbuf.iget;
-            TERROR("[REPL UART0] buffer overflow(2). %d bytes was dropped.", huart->RxXferCount - bytes);
-        }
+    for (int i = 0; i < huart->RxXferCount; i++) {
+        if (ringbuf_put(&stdin_ringbuf, huart->pRxBuffPtr[i]) < 0) {
+            TERROR("[REPL UART0] buffer overflow. %d bytes was dropped.", huart->RxXferCount - i);
+            return;
+        } 
     }
-    // } else {
-    //     TERROR("[REPL UART0] buffer overflow(3). %d bytes was dropped.", huart->RxXferCount);
-    // }
-
-    // for (int i = 0; i < huart->RxXferCount; i++) {
-    //     if (ringbuf_put(&stdin_ringbuf, huart->pRxBuffPtr[i]) < 0) {
-    //         TERROR("[REPL UART0] buffer overflow. %d bytes was dropped.", huart->RxXferCount - i);
-    //         return;
-    //     } 
-    // }
 
 }
 
@@ -175,7 +121,7 @@ static inline bool decode_utf8_from_buffer(int * code) {
 // implement MPY HAL stdio
 //===========================================
 #include "mphalport.h"
-
+#include "py/runtime.h"
 uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
     uintptr_t ret = 0;
     if ((poll_flags & MP_STREAM_POLL_RD) && stdin_ringbuf.iget != stdin_ringbuf.iput) {
@@ -189,11 +135,17 @@ int mp_hal_stdin_rx_chr(void) {
 		if (stdin_ringbuf.iget != stdin_ringbuf.iput) {
 			int code = 0;
 			if (decode_utf8_from_buffer(&code)) {
-				return code;
+                //if (code == mp_interrupt_char) {
+                if (code == 3) {
+                    printf("INTERRRRRRRRUUUUUPPPPPPTT!\r\n");
+                    mp_sched_keyboard_interrupt();
+                } else {
+				    return code;
+                }
 			}
 		}
 		//GengYong: TODO: 
-		mp_hal_delay_ms(1);
+		MICROPY_EVENT_POLL_HOOK
 	}
     return 0;
 }

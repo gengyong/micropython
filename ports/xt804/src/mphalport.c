@@ -14,6 +14,18 @@
 #include "mphalport.h"
 
 //================================================
+// Pin
+void mp_hal_pin_config(mp_hal_pin_obj_t pin_obj, uint32_t mode, uint32_t pull, uint32_t alt) {
+    assert(alt == 0);
+    GPIO_InitTypeDef initDef;
+    initDef.Pin = pin_obj->pin;
+    initDef.Mode = mode;
+    initDef.Pull = pull;
+    HAL_GPIO_Init(pin_obj->gpio, &initDef);
+    mp_hal_gpio_clock_enable(pin_obj->gpio);
+}
+
+//================================================
 // Time
 #if 0 // GengYong: use xt804 timer.
 void mp_hal_delay_us(uint32_t us) {
