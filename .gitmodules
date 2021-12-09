@@ -44,3 +44,6 @@
 [submodule "ports/xt804/sdk/wm-sdk-w806"]
 	path = ports/xt804/sdk/wm-sdk-w806
 	url = https://github.com/IOsetting/wm-sdk-w806.git
+[submodule "ports/xt804/sdk/WM_SDK_W806"]
+	path = ports/xt804/sdk/WM_SDK_W806
+	url = https://github.com/gengyong/WM_SDK_W806.git

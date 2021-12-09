@@ -759,9 +759,9 @@ const mp_obj_type_t machine_rtc_alarm_type = {
 };
 
 
-
 STATIC mp_uint_t machine_rtc_alarm_irq_trigger(mp_obj_t self_in, mp_uint_t new_trigger) {
     machine_rtc_alarm_obj_t *alarm = MP_OBJ_TO_PTR(self_in);
+    // TODO: change trigger source.
     return 0;
 }
 

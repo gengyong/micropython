@@ -75,7 +75,7 @@ STATIC mp_obj_t machine_freq(size_t n_args, const mp_obj_t *args) {
             mp_raise_ValueError(MP_ERROR_TEXT("frequency must be 40MHz, 80Mhz, 120Mhz, 160MHz or 240MHz"));
         } else {
             TLOG("Set System Clock Freq to %uMhz", freq);
-            uint32_t askclk = W806_PLL_CLK_MHZ / freq;
+            uint32_t askclk = W805_PLL_CLK_MHZ / freq;
             SystemClock_Config(askclk);
         }
         return mp_const_none;
@@ -380,12 +380,16 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
 
     // Wake reasons
     //{ MP_ROM_QSTR(MP_QSTR_wake_reason), MP_ROM_PTR(&machine_wake_reason_obj) },
-   // { MP_ROM_QSTR(MP_QSTR_PIN_WAKE), MP_ROM_INT(0) },
-   // { MP_ROM_QSTR(MP_QSTR_EXT0_WAKE), MP_ROM_INT(1) },
+    // { MP_ROM_QSTR(MP_QSTR_PIN_WAKE), MP_ROM_INT(0) },
+    // { MP_ROM_QSTR(MP_QSTR_EXT0_WAKE), MP_ROM_INT(1) },
     //{ MP_ROM_QSTR(MP_QSTR_EXT1_WAKE), MP_ROM_INT(2) },
     //{ MP_ROM_QSTR(MP_QSTR_TIMER_WAKE), MP_ROM_INT(3) },
     //{ MP_ROM_QSTR(MP_QSTR_TOUCHPAD_WAKE), MP_ROM_INT(4) },
-   // { MP_ROM_QSTR(MP_QSTR_ULP_WAKE), MP_ROM_INT(5) },
+    // { MP_ROM_QSTR(MP_QSTR_ULP_WAKE), MP_ROM_INT(5) },
+
+    
+
+    
 };
 
 STATIC MP_DEFINE_CONST_DICT(machine_module_globals, machine_module_globals_table);

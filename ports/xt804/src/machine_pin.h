@@ -39,13 +39,16 @@ const machine_pin_obj_t* machine_pin_get_obj(mp_obj_t pin_in);
 #define PIN_FEATURE_PWN2        ((uint32_t)0x00000008)
 #define PIN_FEATURE_PWN3        ((uint32_t)0x00000010)
 #define PIN_FEATURE_PWN4        ((uint32_t)0x00000020)
-#define PIN_FEATURE_ADC0        ((uint32_t)0x00000040)
-#define PIN_FEATURE_ADC1        ((uint32_t)0x00000080)
-#define PIN_FEATURE_ADC2        ((uint32_t)0x00000100)
-#define PIN_FEATURE_ADC3        ((uint32_t)0x00000200)
-#define PIN_FEATURE_I2C_SCL     ((uint32_t)0x00000400)
-#define PIN_FEATURE_I2C_SDA     ((uint32_t)0x00000800)
-#define PIN_FEATURE_I2S_MCLK    ((uint32_t)0x00010000)
+#define PIN_FEATURE_PWNBREAK    ((uint32_t)0x00000040)
+#define PIN_FEATURE_ADC0        ((uint32_t)0x00000080)
+#define PIN_FEATURE_ADC1        ((uint32_t)0x00000100)
+#define PIN_FEATURE_ADC2        ((uint32_t)0x00000200)
+#define PIN_FEATURE_ADC3        ((uint32_t)0x00000400)
+#define PIN_FEATURE_I2C_SCL     ((uint32_t)0x00000800)
+#define PIN_FEATURE_I2C_SDA     ((uint32_t)0x00001000)
+#define PIN_FEATURE_I2S_MCLK    ((uint32_t)0x00002000)
+
+
 
 
 #define PIN_FEATURE_MASK_PWN (PIN_FEATURE_PWN0 | PIN_FEATURE_PWN1 | PIN_FEATURE_PWN2 | PIN_FEATURE_PWN3 | PIN_FEATURE_PWN4)

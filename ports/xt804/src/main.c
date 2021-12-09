@@ -73,65 +73,116 @@ __attribute__((isr)) void PMU_IRQHandler(void) {
 
 #else
 
-#include <stdio.h>                                            
+/******************************************************************************
+** 
+ * \file        main.c
+ * \author      IOsetting | iosetting@outlook.com
+ * \date        
+ * \brief       Demo code of PWM in 2-complementary mode
+ * \note        This will drive 4 LEDs (3 onboard and 1 external) to show 2-complementary mode
+ * \version     v0.1
+ * \ingroup     demo
+ * \remarks     test-board: HLK-W806-KIT-V1.0
+ *              PWM Frequency = 40MHz / Prescaler / (Period + 1)；
+ *              Duty Cycle(Edge Aligned)   = (Pulse + 1) / (Period + 1)
+ *              Duty Cycle(Center Aligned) = (2 * Pulse + 1) / (2 * (Period + 1))
+ *
+ *              Connect PB3 to an external LED for PWM3 output
+ *              PB3   -> ext LED1(-)
+ *              3V3   -> ext LED1(+)(with 1KR resistor)
+ *
+******************************************************************************/
+
+#include <stdio.h>
 #include "wm_hal.h"
 
-void Error_Handler(void);
-static void GPIO_Init(void);
+#define DUTY_MAX 100
+#define DUTY_MIN 0
+PWM_HandleTypeDef pwm[2]; 
+int i, j, m[2] = {0}, d[2] = {DUTY_MIN, (DUTY_MIN + DUTY_MAX) / 2};
 
-static volatile uint8_t key_flag = 0;
+static void PWM_Init(PWM_HandleTypeDef *hpwm, uint32_t channel);
+void Error_Handler(void);
 
 int main(void)
 {
     SystemClock_Config(CPU_CLK_160M);
     printf("enter main\r\n");
-    HAL_Init();
-    GPIO_Init();
-    
+
+    PWM_Init(pwm + 1, PWM_CHANNEL_2);
+    HAL_PWM_Start(pwm + 1);
+    PWM_Init(pwm, PWM_CHANNEL_0);
+    HAL_PWM_Start(pwm);
+
     while (1)
     {
-        if (key_flag == 1)
+        for (i = 0; i < 2; i++)
         {
-            HAL_Delay(20);
-            if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_5) == GPIO_PIN_RESET)
+            if (m[i] == 0) // Increasing
             {
-                HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2);
+                HAL_PWM_Duty_Set(pwm + i, d[i]++);
+                if (d[i] == DUTY_MAX)
+                {
+                    m[i] = 1;
+                }
             }
-            key_flag = 0;
+            else // Decreasing
+            {
+                HAL_PWM_Duty_Set(pwm + i, d[i]--);
+                if (d[i] == DUTY_MIN)
+                {
+                    m[i] = 0;
+                }
+            }
         }
+        HAL_Delay(20);
     }
-    
-    return 0;
 }
 
-static void GPIO_Init(void)
+static void PWM_Init(PWM_HandleTypeDef *hpwm, uint32_t channel)
 {
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    
-    __HAL_RCC_GPIO_CLK_ENABLE();
-
-    GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2, GPIO_PIN_SET);
-    
-    GPIO_InitStruct.Pin = GPIO_PIN_5;
-    GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    
-    HAL_NVIC_SetPriority(GPIOB_IRQn, 0);
-    HAL_NVIC_EnableIRQ(GPIOB_IRQn);
-
+    hpwm->Instance = PWM;
+    hpwm->Init.AutoReloadPreload = PWM_AUTORELOAD_PRELOAD_ENABLE;
+    hpwm->Init.CounterMode = PWM_COUNTERMODE_EDGEALIGNED_DOWN;
+    hpwm->Init.Prescaler = 4;
+    hpwm->Init.Period = 99;    // Frequency = 40,000,000 / 4 / (99 + 1) = 100,000 = 100KHz
+    hpwm->Init.Pulse = 19;     // Duty Cycle = (19 + 1) / (99 + 1) = 20%
+    hpwm->Init.OutMode = PWM_OUT_MODE_2COMPLEMENTARY; // 2-channel complementary mode
+    hpwm->Channel = channel;   // Only Channel 0 and Channel 2 are allowed
+    HAL_PWM_Init(hpwm);
 }
 
-void HAL_GPIO_EXTI_Callback(GPIO_TypeDef *GPIOx, uint32_t GPIO_Pin)
+void Error_Handler(void)
 {
-    if ((GPIOx == GPIOB) && (GPIO_Pin == GPIO_PIN_5))
+    while (1)
     {
-        key_flag = 1;
     }
+}
+
+void assert_failed(uint8_t *file, uint32_t line)
+{
+    printf("Wrong parameters value: file %s on line %d\r\n", file, line);
+}
+
+
+void HAL_MspInit(void)
+{
+
+}
+
+void HAL_PWM_MspInit(PWM_HandleTypeDef *hpwm)
+{
+    __HAL_RCC_PWM_CLK_ENABLE();
+    __HAL_AFIO_REMAP_PWM0(GPIOA, GPIO_PIN_10);
+    __HAL_AFIO_REMAP_PWM1(GPIOB, GPIO_PIN_11);
+    __HAL_AFIO_REMAP_PWM2(GPIOB, GPIO_PIN_12);
+    __HAL_AFIO_REMAP_PWM3(GPIOB, GPIO_PIN_13);
+}
+
+void HAL_PWM_MspDeInit(PWM_HandleTypeDef *hpwm)
+{
+    __HAL_RCC_PWM_CLK_DISABLE();
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_0);
 }
 
 
@@ -140,16 +191,6 @@ __attribute__((isr)) void CORET_IRQHandler(void)
 {
     readl(0xE000E010);
     HAL_IncTick();
-}
-
-__attribute__((isr)) void GPIOA_IRQHandler(void)
-{
- 	HAL_GPIO_EXTI_IRQHandler(GPIOA, GPIO_PIN_0);
-}
-
-__attribute__((isr)) void GPIOB_IRQHandler(void)
-{
-	HAL_GPIO_EXTI_IRQHandler(GPIOB, GPIO_PIN_5);
 }
 
 

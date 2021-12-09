@@ -12,6 +12,11 @@
 
 void mpy_hal_startup() {
     SystemClock_Config(CPU_CLK_240M);
+
+    wm_sys_clk sysclk;
+    SystemClock_Get(&sysclk);
+    SysTick_Config(sysclk.cpuclk);
+
     HAL_Init();
     HAL_UART0_Init();
 

@@ -16,8 +16,8 @@ ExtraLinkOption=-Wl,-zmax-page-size=1024
 #ExtraLinkOption=-Wl,-zmax-page-size=1024
 ########################################################################################
 # Setup sdk
-GIT_SUBMODULES = ports/xt804/sdk/wm-sdk-w806
-SDKPath =./sdk/wm-sdk-w806
+GIT_SUBMODULES = ports/xt804/sdk/WM_SDK_W806
+SDKPath =./sdk/WM_SDK_W806
 ########################################################################################
 WMTOOL=$(SDKPath)/tools/$(TargetBoard)/wm_tool
 TARGET_ROM=micropython_xt804
@@ -205,7 +205,6 @@ EXTMOD_SRC_C +=extmod/machine_i2c.c
 EXTMOD_SRC_C +=extmod/machine_mem.c
 EXTMOD_SRC_C +=extmod/machine_pinbase.c
 EXTMOD_SRC_C +=extmod/machine_pulse.c
-EXTMOD_SRC_C +=extmod/machine_pwm.c
 EXTMOD_SRC_C +=extmod/machine_signal.c
 EXTMOD_SRC_C +=extmod/machine_spi.c
 EXTMOD_SRC_C +=extmod/virtpin.c

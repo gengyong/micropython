@@ -14,7 +14,12 @@ python 跑了起来，正在移植各种模块及硬件器件。
 2021-11-29:
 1. GPIO IRQ 工作了。
 2. ADC 工作了。
-   
+
+2021-12-10:
+1. PWM 工作了。
+2. 片内 flash 文件系统工作了。
+3. RTC 工作了。
+
 ## 计划
 TBD.
 
@@ -29,6 +34,7 @@ TBD.
   <img src="https://raw.githubusercontent.com/gengyong/micropython/master/ports/xt804/boards/W806/picture.jpg" alt="W806 board"/>
 </p>
 
+[合宙 air103](https://doc.openluat.com/article/3674)
 
 ### W800
 TBD.
@@ -110,10 +116,6 @@ MinGW 环境：csky-elfabiv2-tools-mingw-minilibc-20210423
 
 SDK 到 https://h.hlktech.com/Mobile/download/fdetail/143.html 下载。
 在"通用软件"页面下，下载 WM_SDK_W806(.rar)。
-
-有同学在 github 上为此 SDK 建了repo, 也可以从此处克隆。
-感谢 IOSetting 同学！
-https://github.com/IOsetting/wm-sdk-w806
 
 工具链和SDK下载好之后，解压到指定目录，然后修改 Makefile 配置工具链和SDK路径。
 
