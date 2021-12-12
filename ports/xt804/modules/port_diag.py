@@ -1,13 +1,13 @@
 import xt804
 import uctypes
 import network
-import lwip
+#import lwip
 
 
 def main():
 
     '''
-    ROM = uctypes.bytearray_at(0x40200000, 16)
+    ROM = uctypes.bytearray_at(0x8010000, 44)
     fid = xt804.flash_id()
 
     print("FlashROM:")

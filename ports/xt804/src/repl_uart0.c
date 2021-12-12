@@ -76,8 +76,6 @@ static void session_startup() {
     mp_stack_set_top((void *)STACK_TOP);
     mp_stack_set_limit(STACK_TOP - V_SRAM_START);
 
-    //mp_hal_init(); //TODO:
-
     gc_init(HEAP_MEM, HEAP_MEM + sizeof(HEAP_MEM));
 
     mp_init();
@@ -98,7 +96,6 @@ static void session_startup() {
 
 static void session_terminate() {
    mp_deinit();
-   //mp_hal_deinit(); //TODO:
 }
 
 
@@ -115,11 +112,6 @@ void soft_reset(void) {
 void repl_listen_uart0() {
     STACK_TOP = get_sp();
 
-	//GPIO_InitTypeDef GPIO_InitStruct = { GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2, GPIO_MODE_OUTPUT, GPIO_NOPULL};
-	//HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    //HAL_UART0_Init();
-    
-    mpy_hal_startup();
     session_startup();
 
     TLOG("STACK:  [0x%X - 0x%X] SIZE: 0x%X (%dKB)", D_SRAM_START, STACK_TOP, (STACK_TOP - D_SRAM_START), (STACK_TOP - D_SRAM_START)>>10);

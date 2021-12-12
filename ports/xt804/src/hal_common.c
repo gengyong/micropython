@@ -5,7 +5,7 @@
 
 #include <stdarg.h>
 
-int g_colorful_print = 0;
+int8_t g_colorful_print = 0;
 
 void hal_print(const char * label, const char * term, const char * fmt, ...) {
     wm_printf(label);

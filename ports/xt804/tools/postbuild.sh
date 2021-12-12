@@ -25,9 +25,9 @@ FirmwareName=$2
 WMTOOL=$3
 SDKPath=$4
 
-zip_type=$6
-signature=$7
-code_encrypt=$8
+zip_type=$5
+signature=$6
+code_encrypt=$7
 
 prikey_sel=0
 sign_pubkey_src=0

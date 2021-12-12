@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include <arch/xt804/csi_core/core_804.h>
+
 // options to control how MicroPython is built
 
 #define XT804_PIN_IRQ_COUNT (44)
@@ -22,6 +24,10 @@
 typedef intptr_t mp_int_t; // must be pointer size
 typedef uintptr_t mp_uint_t; // must be pointer size
 typedef long mp_off_t;
+
+// irq disable/restore for atomic section
+#define MICROPY_BEGIN_ATOMIC_SECTION()     csi_irq_save()
+#define MICROPY_END_ATOMIC_SECTION(state)  csi_irq_restore(state)
 
 // We need to provide a declaration/definition of alloca()
 #include <alloca.h>

@@ -42,6 +42,8 @@
 
 #define RTC_ALARM_GROUP_CAPACITY (8)
 
+#define UNIX_TIMESTAMP_AT_2000 (946684800)
+
 PMU_HandleTypeDef xt804_rtc_source;
 
 typedef struct _machine_rtc_obj_t {
@@ -57,7 +59,7 @@ typedef struct _machine_rtc_irq_obj_t {
 typedef struct _machine_rtc_alarm_obj_t {
     mp_obj_base_t base;
     machine_rtc_irq_obj_t * irq;
-    uint32_t alarm_datetime_s;
+    uint64_t alarm_datetime_s;
     uint32_t alarm_interval_ms;;
     uint16_t alarm_triggered_count;
 } machine_rtc_alarm_obj_t;
@@ -272,8 +274,6 @@ void schedule_rtc_alarm(const machine_rtc_obj_t * rtc) {
             HAL_NVIC_EnableIRQ(PMU_IRQn);
             HAL_PMU_RTC_Alarm_Enable(&xt804_rtc_source, &rtctime);
         }
-    } else {
-        HAL_NVIC_DisableIRQ(PMU_IRQn);
     }
 }
 
@@ -328,6 +328,21 @@ STATIC mp_obj_t machine_rtc_datetime(mp_uint_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_rtc_datetime_obj, 1, 2, machine_rtc_datetime);
 
+
+STATIC mp_obj_t machine_rtc_timestamp(mp_obj_t self_in) {
+    RTC_TimeTypeDef rtctime;
+    HAL_PMU_RTC_GetTime(&xt804_rtc_source, &rtctime);
+    uint32_t seconds = timeutils_seconds_since_2000(
+        rtctime.Year + 2000, 
+        rtctime.Month,
+        rtctime.Date,
+        rtctime.Hours,
+        rtctime.Minutes,
+        rtctime.Seconds
+    );
+    return mp_obj_new_int_from_ll((uint64_t)seconds + UNIX_TIMESTAMP_AT_2000);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_rtc_timestamp_obj, machine_rtc_timestamp);
 
 STATIC mp_obj_t machine_rtc_alarm(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_id, ARG_time, ARG_handler, ARG_repeat };
@@ -407,7 +422,7 @@ STATIC mp_obj_t machine_rtc_alarm(size_t n_args, const mp_obj_t *pos_args, mp_ma
                 rtctime.Minutes,
                 rtctime.Seconds
             );
-            alarm->alarm_datetime_s += alarm->alarm_interval_ms / 1000;
+            alarm->alarm_datetime_s += milliseconds / 1000;
         }
 
         if (args[ARG_handler].u_obj != mp_const_none) {
@@ -439,7 +454,6 @@ STATIC mp_obj_t machine_rtc_alarm_left(size_t n_args, const mp_obj_t *args) {
         alarm_id = mp_obj_get_int(args[1]);
     }
     if (alarm_id >= RTC_ALARM_GROUP_CAPACITY) {
-        // support alarm 0 only now
         mp_raise_OSError(MP_ENODEV);
     }
 
@@ -512,7 +526,7 @@ STATIC mp_obj_t machine_rtc_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
     STATIC const mp_arg_t allowed_args[] = {
         { MP_QSTR_trigger,                   MP_ARG_INT,  {.u_int = 0} },
         { MP_QSTR_handler,                   MP_ARG_OBJ,  {.u_obj = mp_const_none} },
-        { MP_QSTR_wake,     MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_obj = mp_const_none} },
+        { MP_QSTR_wake,     MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = false} },
     };
 
     machine_rtc_obj_t *self = pos_args[0];
@@ -523,11 +537,6 @@ STATIC mp_obj_t machine_rtc_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
     // uint8_t pwrmode = (args[ARG_wake].u_obj == mp_const_none) ? PYB_PWR_MODE_ACTIVE : mp_obj_get_int(args[ARG_wake].u_obj);
     // if (pwrmode > (PYB_PWR_MODE_ACTIVE | PYB_PWR_MODE_LPDS | PYB_PWR_MODE_HIBERNATE)) {
     //     goto invalid_args;
-    // }
-
-    // check the trigger
-    // if (mp_obj_get_int(args[ARG_trigger].u_obj) != 0){
-    //     mp_raise_OSError(MP_ENODEV);
     // }
 
     int alarm_id = args[ARG_trigger].u_int;
@@ -577,6 +586,8 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_rtc_alarm_list_obj, machine_rtc_alarm_l
 
 STATIC const mp_rom_map_elem_t machine_rtc_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_datetime),        MP_ROM_PTR(&machine_rtc_datetime_obj) },
+    // return unix timestamp in seconds(from 1970-01-01 00:00:00).
+    { MP_ROM_QSTR(MP_QSTR_timestamp),       MP_ROM_PTR(&machine_rtc_timestamp_obj) },
     { MP_ROM_QSTR(MP_QSTR_alarm),           MP_ROM_PTR(&machine_rtc_alarm_obj) },
     { MP_ROM_QSTR(MP_QSTR_alarm_left),      MP_ROM_PTR(&machine_rtc_alarm_left_obj) },
     { MP_ROM_QSTR(MP_QSTR_alarm_cancel),    MP_ROM_PTR(&machine_rtc_alarm_cancel_obj) },
@@ -595,7 +606,8 @@ const mp_obj_type_t machine_rtc_type = {
 
 STATIC void machine_rtc_alarm_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_rtc_alarm_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    mp_printf(print, "Alarm(datetime=%d)", self->alarm_datetime_s);
+    int id = MPY_ARRAY_INDEX(machine_rtc_alarms_obj, self) % RTC_ALARM_GROUP_CAPACITY;
+    mp_printf(print, "Alarm(id=%d, time=%ld)", id, self->alarm_datetime_s + UNIX_TIMESTAMP_AT_2000);
 }
 
 STATIC mp_obj_t machine_rtc_alarm_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
@@ -760,8 +772,8 @@ const mp_obj_type_t machine_rtc_alarm_type = {
 
 
 STATIC mp_uint_t machine_rtc_alarm_irq_trigger(mp_obj_t self_in, mp_uint_t new_trigger) {
-    machine_rtc_alarm_obj_t *alarm = MP_OBJ_TO_PTR(self_in);
     // TODO: change trigger source.
+    // machine_rtc_alarm_obj_t *alarm = MP_OBJ_TO_PTR(self_in);
     return 0;
 }
 
@@ -805,11 +817,11 @@ STATIC const machine_rtc_irq_methods_t machine_rtc_irq_methods = {
 };
 
 void HAL_PMU_RTC_Callback(PMU_HandleTypeDef * hpmu) {
-    if (hpmu != &xt804_rtc_source) {
-        return;
-    }
-    
     TDEBUG("HAL_PMU_RTC_Callback irq");
+    
+    if (g_wake_reason < 0) {
+        g_wake_reason = MACHINE_WAKE_REASON_RTC;
+    }
 
     RTC_TimeTypeDef rtctime;
     if (HAL_OK != HAL_PMU_RTC_GetTime(&xt804_rtc_source, &rtctime)) {
@@ -847,3 +859,5 @@ void HAL_PMU_RTC_Callback(PMU_HandleTypeDef * hpmu) {
 
     schedule_rtc_alarm(self);
 }
+
+

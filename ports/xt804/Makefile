@@ -19,7 +19,11 @@ ExtraLinkOption=-Wl,-zmax-page-size=1024
 GIT_SUBMODULES = ports/xt804/sdk/WM_SDK_W806
 SDKPath =./sdk/WM_SDK_W806
 ########################################################################################
+ifeq ($(UNAME_O),Msys)
+WMTOOL=$(SDKPath)/tools/$(TargetBoard)/wm_tool.exe
+else
 WMTOOL=$(SDKPath)/tools/$(TargetBoard)/wm_tool
+endif
 TARGET_ROM=micropython_xt804
 ########################################################################################
 # MicroPython feature configurations
@@ -109,8 +113,8 @@ LD_MAP_OPTION = -Wl,--ckmap=$(BUILD)/firmware.map
 LD_LIB_OPTION = -Wl,--start-group -Wl,--end-group
 LD_DEFAULT_OPTIONS = $(ExtraLinkOption) $(LD_MAP_OPTION) $(TargetLDOption) -nostartfiles -Wl,--gc-sections -T"$(SDKPath)/ld/$(TargetBoard)/gcc_csky.ld" $(LD_LIB_OPTION) 
 ########################################################################################
-ifeq ($(prod),)
-CC_DEFAULT_OPTIONS +=-DDEBUG
+ifeq ($(prod),1)
+CC_DEFAULT_OPTIONS +=-DNDEBUG
 endif
 ########################################################################################
 CFLAGS = $(INC) $(addprefix -I,$(PLATFORM_INCDIR)) $(CC_DEFAULT_OPTIONS) $(COPT) $(CFLAGS_MOD)

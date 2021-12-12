@@ -29,8 +29,7 @@
 #include "py/runtime.h"
 #include "py/mperrno.h"
 #include "extmod/vfs.h"
-//#include "modesp32.h"
-//#include "esp_ota_ops.h"
+
 #include "modxt804.h"
 #include "hal_common.h"
 
@@ -280,10 +279,10 @@ STATIC mp_obj_t xt804_partition_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_
             //TDEBUG("MP_BLOCKDEV_IOCTL_BLOCK_SIZE: result: %d", BLOCK_SIZE_BYTES);
             return MP_OBJ_NEW_SMALL_INT(BLOCK_SIZE_BYTES);
         case MP_BLOCKDEV_IOCTL_BLOCK_ERASE: {
-            //TDEBUG("MP_BLOCKDEV_IOCTL_BLOCK_ERASE");
             uint32_t sector = mp_obj_int_get_uint_checked(arg_in);
+            TDEBUG("MP_BLOCKDEV_IOCTL_BLOCK_ERASE SECTOR %u", sector);
             if (sector < self->part->size / BLOCK_SIZE_BYTES) {
-                HAL_FLASH_erase(sector);
+                //HAL_FLASH_erase(self->part->addr + sector * BLOCK_SIZE_BYTES);
             } else {
                 mp_raise_ValueError(MP_ERROR_TEXT("sector number out of range."));
             }

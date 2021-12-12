@@ -35,6 +35,9 @@
 
 #define DEFAULT_I2C_FREQ (400000)
 
+
+// TODO: waiting for hardware implemention.
+
 typedef struct _machine_hw_i2c_obj_t {
     mp_obj_base_t base;
     I2C_HandleTypeDef i2c;

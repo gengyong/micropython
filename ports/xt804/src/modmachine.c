@@ -49,18 +49,16 @@
 #include "extmod/machine_i2c.h"
 #include "extmod/machine_spi.h"
 #include "modmachine.h"
-//#include "machine_rtc.h"
 #include "hal_common.h"
 
-typedef enum {
-    MP_PWRON_RESET = 1,
-    MP_HARD_RESET,
-    MP_WDT_RESET,
-    MP_DEEPSLEEP_RESET,
-    MP_SOFT_RESET
-} reset_reason_t;
 
-STATIC bool is_soft_reset = 0;
+int8_t g_wake_reason = 0;
+int8_t g_reset_reason = 0;
+
+typedef enum {
+    MACHINE_SLEEP_NORMAL,
+    MACHINE_SLEEP_DEEP
+} sleep_type_t;
 
 STATIC mp_obj_t machine_freq(size_t n_args, const mp_obj_t *args) {
     if (n_args == 0) {
@@ -71,10 +69,10 @@ STATIC mp_obj_t machine_freq(size_t n_args, const mp_obj_t *args) {
     } else {
         // set
         mp_int_t freq = mp_obj_get_int(args[0]) / 1000000;
-        if (freq != 40 && freq != 80 && freq != 120 && freq != 160 && freq != 240) {
-            mp_raise_ValueError(MP_ERROR_TEXT("frequency must be 40MHz, 80Mhz, 120Mhz, 160MHz or 240MHz"));
+        if (freq != 40 && freq != 80 && freq != 160 && freq != 240) {
+            mp_raise_ValueError(MP_ERROR_TEXT("frequency must be 40MHz, 80Mhz, 160MHz or 240MHz"));
         } else {
-            TLOG("Set System Clock Freq to %uMhz", freq);
+            TDEBUG("Set System Clock Freq to %uMhz", freq);
             uint32_t askclk = W805_PLL_CLK_MHZ / freq;
             SystemClock_Config(askclk);
         }
@@ -83,22 +81,46 @@ STATIC mp_obj_t machine_freq(size_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_freq_obj, 0, 1, machine_freq);
 
-STATIC mp_obj_t machine_sleep_helper(wake_type_t wake_type, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t run_scheduled_sleep(mp_obj_t sleep_ms_obj) {
+    int sleep_ms = mp_obj_get_int(sleep_ms_obj);
+    g_wake_reason = -1;
+    if (sleep_ms > 0) {
+        TLOG("Sleep %d seconds ...", MAX(1, sleep_ms/1000));
+        HAL_NVIC_EnableIRQ(PMU_IRQn);
+        HAL_PMU_TIMER0_Start(&xt804_rtc_source, MAX(1, sleep_ms/1000));
+    }
+    HAL_PMU_Enter_Sleep(&xt804_rtc_source);
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(run_scheduled_sleep_obj, run_scheduled_sleep);
 
-    // enum {ARG_sleep_ms};
-    // const mp_arg_t allowed_args[] = {
-    //     { MP_QSTR_sleep_ms, MP_ARG_INT, { .u_int = 0 } },
-    // };
+STATIC mp_obj_t run_scheduled_deepsleep(mp_obj_t sleep_ms_obj) {
+    int sleep_ms = mp_obj_get_int(sleep_ms_obj);
+    g_wake_reason = -1;
+    if (sleep_ms > 0) {
+        HAL_NVIC_EnableIRQ(PMU_IRQn);
+        HAL_PMU_TIMER0_Start(&xt804_rtc_source, MAX(1, sleep_ms/1000));
+    }
+    HAL_PMU_Enter_Standby(&xt804_rtc_source);
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(run_scheduled_deepsleep_obj, run_scheduled_deepsleep);
 
-    // mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
-    // mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+STATIC mp_obj_t machine_sleep_helper(sleep_type_t sleep_type, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    enum {ARG_sleep_ms};
+    const mp_arg_t allowed_args[] = {
+        { MP_QSTR_sleep_ms, MP_ARG_INT, { .u_int = 0 } },
+    };
 
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    // mp_int_t expiry = args[ARG_sleep_ms].u_int;
-
-    // if (expiry != 0) {
-    //     esp_sleep_enable_timer_wakeup(((uint64_t)expiry) * 1000);
-    // }
+    mp_int_t sleep_ms = args[ARG_sleep_ms].u_int;
+    if (sleep_ms != 0) {
+        if (!IS_PMU_TIMPERIOD(sleep_ms / 1000)) {
+            mp_raise_ValueError(MP_ERROR_TEXT("sleep time should be less than 65535000 milliseconds"));
+        }
+    }
 
     // #if !CONFIG_IDF_TARGET_ESP32C3
 
@@ -120,31 +142,49 @@ STATIC mp_obj_t machine_sleep_helper(wake_type_t wake_type, size_t n_args, const
 
     // #endif
 
-    // switch (wake_type) {
-    //     case MACHINE_WAKE_SLEEP:
-    //         esp_light_sleep_start();
-    //         break;
-    //     case MACHINE_WAKE_DEEPSLEEP:
-    //         esp_deep_sleep_start();
-    //         break;
-    // }
+    switch (sleep_type) {
+    case MACHINE_SLEEP_NORMAL:
+        // run it in scheduled task list, so user has chance to do some thing in current tick.
+        mp_sched_schedule(MP_OBJ_FROM_PTR(&run_scheduled_sleep_obj), MP_OBJ_NEW_SMALL_INT(sleep_ms));
+        // g_wake_reason = -1;
+        // if (sleep_ms > 0) {
+        //     HAL_NVIC_EnableIRQ(PMU_IRQn);
+        //     HAL_PMU_TIMER0_Start(&xt804_rtc_source, sleep_ms/1000);
+        // }
+        // HAL_PMU_Enter_Sleep(&xt804_rtc_source);
+        break;
+    case MACHINE_SLEEP_DEEP:
+        // run it in scheduled task list, so user has chance to do some thing in current tick.
+        mp_sched_schedule(MP_OBJ_FROM_PTR(&run_scheduled_deepsleep_obj), MP_OBJ_NEW_SMALL_INT(sleep_ms));
+        // g_wake_reason = -1;
+        // if (sleep_ms > 0) {
+        //     HAL_NVIC_EnableIRQ(PMU_IRQn);
+        //     HAL_PMU_TIMER0_Start(&xt804_rtc_source, sleep_ms/1000);
+        // }
+        // HAL_PMU_Enter_Standby(&xt804_rtc_source);
+        break;
+    }
+    
     return mp_const_none;
 }
 
+
 STATIC mp_obj_t machine_lightsleep(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    return machine_sleep_helper(MACHINE_WAKE_SLEEP, n_args, pos_args, kw_args);
+    return machine_sleep_helper(MACHINE_SLEEP_NORMAL, n_args, pos_args, kw_args);
 };
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_lightsleep_obj, 0, machine_lightsleep);
 
 STATIC mp_obj_t machine_deepsleep(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    return machine_sleep_helper(MACHINE_WAKE_DEEPSLEEP, n_args, pos_args, kw_args);
+    return machine_sleep_helper(MACHINE_SLEEP_DEEP, n_args, pos_args, kw_args);
 };
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_deepsleep_obj, 0,  machine_deepsleep);
 
+
 STATIC mp_obj_t machine_reset_cause(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    if (is_soft_reset) {
-        return MP_OBJ_NEW_SMALL_INT(MP_SOFT_RESET);
-    }
+    // if (is_soft_reset) {
+    //     return MP_OBJ_NEW_SMALL_INT(MP_SOFT_RESET);
+    // }
+
     // switch (esp_reset_reason()) {
     //     case ESP_RST_POWERON:
     //     case ESP_RST_BROWNOUT:
@@ -173,17 +213,14 @@ STATIC mp_obj_t machine_reset_cause(size_t n_args, const mp_obj_t *pos_args, mp_
     //         return MP_OBJ_NEW_SMALL_INT(0);
     //         break;
     // }
-    return mp_const_none;
+    return MP_OBJ_NEW_SMALL_INT(MAX(g_reset_reason, 0));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_reset_cause_obj, 0,  machine_reset_cause);
 
 void machine_init(void) {
-    is_soft_reset = 0;
 }
 
 void machine_deinit(void) {
-    // we are doing a soft-reset so change the reset_cause
-    is_soft_reset = 1;
 }
 
 // machine.info([dump_alloc_table])
@@ -200,6 +237,10 @@ STATIC mp_obj_t machine_info(size_t n_args, const mp_obj_t *args) {
     // get and print clock speeds
     // SYSCLK=168MHz, HCLK=168MHz, PCLK1=42MHz, PCLK2=84MHz
     {
+        wm_sys_clk sysclk;
+        SystemClock_Get(&sysclk);
+        printf("APB=%u\nCPU=%u\nWLAN=%u\n", sysclk.apbclk, sysclk.cpuclk, sysclk.wlanclk);
+
         // printf("S=%u\nH=%u\nP1=%u\nP2=%u\n",
         //     (unsigned int)HAL_RCC_GetSysClockFreq(),
         //     (unsigned int)HAL_RCC_GetHCLKFreq(),
@@ -271,17 +312,20 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_info_obj, 0, 1, machine_info);
 
 STATIC mp_obj_t machine_wake_reason(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     //return MP_OBJ_NEW_SMALL_INT(esp_sleep_get_wakeup_cause());
-    return mp_const_none;
+    return MP_OBJ_NEW_SMALL_INT(MAX(g_wake_reason, 0));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_wake_reason_obj, 0,  machine_wake_reason);
 
 STATIC mp_obj_t machine_reset(void) {
-    //esp_restart();
+    // TODO: ?
+    //csi_system_reset();
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_reset_obj, machine_reset);
 
 STATIC mp_obj_t machine_soft_reset(void) {
+    g_reset_reason = MACHINE_RESET_REASON_SOFT;
+    TDEBUG("machine_soft_reset: => reset reason: Soft");
     pyexec_system_exit = PYEXEC_FORCED_EXIT;
     mp_raise_type(&mp_type_SystemExit);
 }
@@ -294,42 +338,41 @@ STATIC mp_obj_t machine_unique_id(void) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_unique_id_obj, machine_unique_id);
 
 STATIC mp_obj_t machine_idle(void) {
-    // MP_THREAD_GIL_EXIT();
-    // taskYIELD();
-    // MP_THREAD_GIL_ENTER();
+    MICROPY_EVENT_POLL_HOOK; //__WFI();
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_idle_obj, machine_idle);
 
 STATIC mp_obj_t machine_disable_irq(void) {
-    //uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
-    //return mp_obj_new_int(state);
-    return mp_const_none;
+    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
+    return mp_obj_new_int(state);
 }
 MP_DEFINE_CONST_FUN_OBJ_0(machine_disable_irq_obj, machine_disable_irq);
 
 STATIC mp_obj_t machine_enable_irq(mp_obj_t state_in) {
-   // uint32_t state = mp_obj_get_int(state_in);
-   // MICROPY_END_ATOMIC_SECTION(state);
+    uint32_t state = mp_obj_get_int(state_in);
+    MICROPY_END_ATOMIC_SECTION(state);
     return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_1(machine_enable_irq_obj, machine_enable_irq);
+
+
 
 STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_machine) },
     { MP_ROM_QSTR(MP_QSTR_unique_id), MP_ROM_PTR(&machine_unique_id_obj) },
     { MP_ROM_QSTR(MP_QSTR_info), MP_ROM_PTR(&machine_info_obj) },
     { MP_ROM_QSTR(MP_QSTR_soft_reset), MP_ROM_PTR(&machine_soft_reset_obj) },
-    //{ MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&machine_reset_obj) },
+    { MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&machine_reset_obj) },
 
     { MP_ROM_QSTR(MP_QSTR_freq), MP_ROM_PTR(&machine_freq_obj) },
-    //{ MP_ROM_QSTR(MP_QSTR_sleep), MP_ROM_PTR(&machine_lightsleep_obj) },
-    //{ MP_ROM_QSTR(MP_QSTR_lightsleep), MP_ROM_PTR(&machine_lightsleep_obj) },
-    //{ MP_ROM_QSTR(MP_QSTR_deepsleep), MP_ROM_PTR(&machine_deepsleep_obj) },
-    //{ MP_ROM_QSTR(MP_QSTR_idle), MP_ROM_PTR(&machine_idle_obj) },
+    { MP_ROM_QSTR(MP_QSTR_sleep), MP_ROM_PTR(&machine_lightsleep_obj) },
+    { MP_ROM_QSTR(MP_QSTR_lightsleep), MP_ROM_PTR(&machine_lightsleep_obj) },
+    { MP_ROM_QSTR(MP_QSTR_deepsleep), MP_ROM_PTR(&machine_deepsleep_obj) },
+    { MP_ROM_QSTR(MP_QSTR_idle), MP_ROM_PTR(&machine_idle_obj) },
 
-    //{ MP_ROM_QSTR(MP_QSTR_disable_irq), MP_ROM_PTR(&machine_disable_irq_obj) },
-    //{ MP_ROM_QSTR(MP_QSTR_enable_irq), MP_ROM_PTR(&machine_enable_irq_obj) },
+    { MP_ROM_QSTR(MP_QSTR_disable_irq), MP_ROM_PTR(&machine_disable_irq_obj) },
+    { MP_ROM_QSTR(MP_QSTR_enable_irq), MP_ROM_PTR(&machine_enable_irq_obj) },
 
     #if MICROPY_PY_MACHINE_BITSTREAM
     { MP_ROM_QSTR(MP_QSTR_bitstream), MP_ROM_PTR(&machine_bitstream_obj) },
@@ -342,16 +385,13 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_mem16), MP_ROM_PTR(&machine_mem16_obj) },
     { MP_ROM_QSTR(MP_QSTR_mem32), MP_ROM_PTR(&machine_mem32_obj) },
 
-
     //{ MP_ROM_QSTR(MP_QSTR_Timer), MP_ROM_PTR(&machine_timer_type) },
-    //{ MP_ROM_QSTR(MP_QSTR_WDT), MP_ROM_PTR(&machine_wdt_type) },
+    { MP_ROM_QSTR(MP_QSTR_WDT), MP_ROM_PTR(&machine_wdt_type) },
     #if MICROPY_HW_ENABLE_SDCARD
     //{ MP_ROM_QSTR(MP_QSTR_SDCard), MP_ROM_PTR(&machine_sdcard_type) },
     #endif
 
     // wake abilities
-    //{ MP_ROM_QSTR(MP_QSTR_SLEEP), MP_ROM_INT(MACHINE_WAKE_SLEEP) },
-    //{ MP_ROM_QSTR(MP_QSTR_DEEPSLEEP), MP_ROM_INT(MACHINE_WAKE_DEEPSLEEP) },
     { MP_ROM_QSTR(MP_QSTR_Pin), MP_ROM_PTR(&machine_pin_type) },
     { MP_ROM_QSTR(MP_QSTR_Signal), MP_ROM_PTR(&machine_signal_type) },
     
@@ -367,30 +407,26 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_PWM), MP_ROM_PTR(&machine_pwm_type) },
     { MP_ROM_QSTR(MP_QSTR_RTC), MP_ROM_PTR(&machine_rtc_type) },
     //{ MP_ROM_QSTR(MP_QSTR_SPI), MP_ROM_PTR(&machine_hw_spi_type) },
-    //{ MP_ROM_QSTR(MP_QSTR_SoftSPI), MP_ROM_PTR(&mp_machine_soft_spi_type) },
+    { MP_ROM_QSTR(MP_QSTR_SoftSPI), MP_ROM_PTR(&mp_machine_soft_spi_type) },
     //{ MP_ROM_QSTR(MP_QSTR_UART), MP_ROM_PTR(&machine_uart_type) },
 
     // Reset reasons
-    //{ MP_ROM_QSTR(MP_QSTR_reset_cause), MP_ROM_PTR(&machine_reset_cause_obj) },
-    //{ MP_ROM_QSTR(MP_QSTR_HARD_RESET), MP_ROM_INT(MP_HARD_RESET) },
-    //{ MP_ROM_QSTR(MP_QSTR_PWRON_RESET), MP_ROM_INT(MP_PWRON_RESET) },
-    //{ MP_ROM_QSTR(MP_QSTR_WDT_RESET), MP_ROM_INT(MP_WDT_RESET) },
-    //{ MP_ROM_QSTR(MP_QSTR_DEEPSLEEP_RESET), MP_ROM_INT(MP_DEEPSLEEP_RESET) },
-    //{ MP_ROM_QSTR(MP_QSTR_SOFT_RESET), MP_ROM_INT(MP_SOFT_RESET) },
+    { MP_ROM_QSTR(MP_QSTR_reset_cause), MP_ROM_PTR(&machine_reset_cause_obj) },
+    { MP_ROM_QSTR(MP_QSTR_PWRON_RESET), MP_ROM_INT(MACHINE_RESET_REASON_PWRON) },
+    { MP_ROM_QSTR(MP_QSTR_HARD_RESET), MP_ROM_INT(MACHINE_RESET_REASON_HARD) },
+    { MP_ROM_QSTR(MP_QSTR_WDT_RESET), MP_ROM_INT(MACHINE_RESET_REASON_WDT) },
+    { MP_ROM_QSTR(MP_QSTR_DEEPSLEEP_RESET), MP_ROM_INT(MACHINE_RESET_REASON_DEEPSLEEP) },
+    { MP_ROM_QSTR(MP_QSTR_SOFT_RESET), MP_ROM_INT(MACHINE_RESET_REASON_SOFT) },
+
 
     // Wake reasons
-    //{ MP_ROM_QSTR(MP_QSTR_wake_reason), MP_ROM_PTR(&machine_wake_reason_obj) },
-    // { MP_ROM_QSTR(MP_QSTR_PIN_WAKE), MP_ROM_INT(0) },
-    // { MP_ROM_QSTR(MP_QSTR_EXT0_WAKE), MP_ROM_INT(1) },
-    //{ MP_ROM_QSTR(MP_QSTR_EXT1_WAKE), MP_ROM_INT(2) },
-    //{ MP_ROM_QSTR(MP_QSTR_TIMER_WAKE), MP_ROM_INT(3) },
-    //{ MP_ROM_QSTR(MP_QSTR_TOUCHPAD_WAKE), MP_ROM_INT(4) },
-    // { MP_ROM_QSTR(MP_QSTR_ULP_WAKE), MP_ROM_INT(5) },
-
-    
-
-    
+    { MP_ROM_QSTR(MP_QSTR_wake_reason), MP_ROM_PTR(&machine_wake_reason_obj) },
+    { MP_ROM_QSTR(MP_QSTR_WLAN_WAKE), MP_ROM_INT(MACHINE_WAKE_REASON_WLAN) },
+    { MP_ROM_QSTR(MP_QSTR_PIN_WAKE), MP_ROM_INT(MACHINE_WAKE_REASON_PIN) },
+    { MP_ROM_QSTR(MP_QSTR_RTC_WAKE), MP_ROM_INT(MACHINE_WAKE_REASON_RTC) },
+    { MP_ROM_QSTR(MP_QSTR_TIMER_WAKE), MP_ROM_INT(MACHINE_WAKE_REASON_TIMER) },
 };
+
 
 STATIC MP_DEFINE_CONST_DICT(machine_module_globals, machine_module_globals_table);
 
@@ -399,3 +435,18 @@ const mp_obj_module_t mp_module_machine = {
     .globals = (mp_obj_dict_t *)&machine_module_globals,
 };
 
+
+void HAL_PMU_Tim0_Callback(PMU_HandleTypeDef * hpmu) {
+    if (g_wake_reason < 0) {
+        g_wake_reason = MACHINE_WAKE_REASON_TIMER;
+        HAL_PMU_TIMER0_Stop(&xt804_rtc_source);
+    }
+    TDEBUG("HAL_PMU_Tim0_Callback");
+}
+
+void HAL_PMU_IO_Callback(PMU_HandleTypeDef * hpmu) {
+    if (g_wake_reason < 0) {
+        g_wake_reason = MACHINE_WAKE_REASON_PIN;
+    }
+    TDEBUG("HAL_PMU_IO_Callback");
+}

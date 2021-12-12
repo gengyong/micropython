@@ -233,8 +233,6 @@ STATIC mp_obj_t machine_pin_obj_init_helper(const machine_pin_obj_t *self, size_
         { MP_QSTR_value, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
     };
 
-    TDEBUG("machine_pin_obj_init_helper: pin(%u) found", self->id);
-
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
@@ -243,9 +241,6 @@ STATIC mp_obj_t machine_pin_obj_init_helper(const machine_pin_obj_t *self, size_
         mp_raise_ValueError(MP_ERROR_TEXT("PIN 'mode' not set."));
         return mp_const_none;
     }
-
-    TDEBUG("machine_pin_obj_init_helper: mode(%u)", args[ARG_mode].u_obj == mp_const_none ? -1 : mp_obj_get_int(args[ARG_mode].u_obj));
-    TDEBUG("machine_pin_obj_init_helper: pull(%u)", args[ARG_pull].u_obj == mp_const_none ? -1 : mp_obj_get_int(args[ARG_pull].u_obj));
 
     // reset the pin to digital if this is a mode-setting init (grab it back from ADC)
     HAL_GPIO_DeInit(self->gpio, self->pin);
@@ -260,16 +255,10 @@ STATIC mp_obj_t machine_pin_obj_init_helper(const machine_pin_obj_t *self, size_
         initDef.Pull = mp_obj_get_int(args[ARG_pull].u_obj);
     }
 
-    TDEBUG("machine_pin_obj_init_helper: pin(%u) HAL_GPIO_Init(mode:%u, pull:%u)", 
-        self->id, initDef.Mode, initDef.Pull);
-
     HAL_GPIO_Init(self->gpio, &initDef);
 
     if (args[ARG_value].u_obj != MP_OBJ_NULL) {
          if (initDef.Mode == GPIO_MODE_OUTPUT) {
-            TDEBUG("machine_pin_obj_init_helper: pin(%u) set default value:  HAL_GPIO_WritePin(%u)", 
-                self->id, mp_obj_is_true(args[ARG_value].u_obj) ? 1 : 0);
-
             HAL_GPIO_WritePin(self->gpio, self->pin, 
                 mp_obj_is_true(args[ARG_value].u_obj) ? GPIO_PIN_SET : GPIO_PIN_RESET);
         }
@@ -282,13 +271,11 @@ STATIC mp_obj_t machine_pin_obj_init_helper(const machine_pin_obj_t *self, size_
 mp_obj_t mp_pin_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 1, MP_OBJ_FUN_ARGS_MAX, true);
 
-    TDEBUG("mp_pin_make_new");
     // get the wanted pin object
     uint32_t pin_id = machine_pin_get_id(args[0]);
     if (pin_id == INVALID_PIN_ID) {
         mp_raise_ValueError(MP_ERROR_TEXT("invalid pin name or id"));
     }
-    TDEBUG("mp_pin_make_new: pin id: %u", pin_id);
 
     const machine_pin_obj_t *self = NULL;
     for (int i = 0; i < MP_ARRAY_SIZE(machine_pin_obj); i++) {
@@ -306,8 +293,6 @@ mp_obj_t mp_pin_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, 
         mp_raise_ValueError(MP_ERROR_TEXT("invalid pin"));
     }
 
-    TDEBUG("mp_pin_make_new: pin(%u) found", pin_id);
-
     if (n_args > 1 || n_kw > 0) {
         // pin mode given, so configure this GPIO
         mp_map_t kw_args;
@@ -324,7 +309,6 @@ STATIC mp_obj_t machine_pin_call(mp_obj_t self_in, size_t n_args, size_t n_kw, c
     machine_pin_obj_t *self = self_in;
     if (n_args == 0) {
         // get pin
-        TDEBUG("machine_pin_call: read pin(%u)", self->id);
         GPIO_PinState state = HAL_GPIO_ReadPin(self->gpio, self->pin);
         return MP_OBJ_NEW_SMALL_INT(state == GPIO_PIN_SET ? 1:0);
     } else {
@@ -416,9 +400,6 @@ STATIC mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
         GPIO_InitTypeDef initDef;
         initDef.Pin = self->pin;
         initDef.Mode = irq->trigger;
-        
-        TDEBUG("machine_pin_irq: self->gpio->PULLUP_EN:0x%X self->pin:0x%X", self->gpio->PULLUP_EN, self->pin);
-        TDEBUG("machine_pin_irq: self->gpio->PULLDOWN_EN:0x%X self->pin:0x%X", self->gpio->PULLDOWN_EN, self->pin);
 
         int pull = args[ARG_pull].u_int;
         if (pull == -1) {
@@ -480,11 +461,9 @@ STATIC mp_uint_t pin_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, i
 
     switch (request) {
         case MP_PIN_READ: {
-            TDEBUG("pin_ioctl: read pin(%u)", self->id);
             return HAL_GPIO_ReadPin(self->gpio, self->pin) == GPIO_PIN_SET ? 1:0;
         }
         case MP_PIN_WRITE: {
-            TDEBUG("pin_ioctl: write pin(%u) = %u", self->id, arg);
             HAL_GPIO_WritePin(self->gpio, self->pin, arg ? GPIO_PIN_SET : GPIO_PIN_RESET);
             return 0;
         }

@@ -1,13 +1,15 @@
 import gc
-import uos
-from flashbdev import bdev
+import os
 
 try:
+    from xt804 import Partition
+    bdev = Partition.find(Partition.TYPE_DATA, label="vfs")
+    bdev = bdev[0] if bdev else None
     if bdev:
-        print("uos.mount...")
-        uos.mount(bdev, "/")
+        print("os.mount...")
+        os.mount(bdev, "/")
         print("mount done")
-        uos.listdir()
+        os.listdir()
         print("list done.")
 except OSError:
     print("OSError...")

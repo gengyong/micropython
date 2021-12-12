@@ -39,28 +39,47 @@
 
 
 static inline bool PWM_Freq_Get(uint32_t channel, uint32_t * prescaler, uint32_t * period) {
-    assert(prescaler != NULL);
-    assert(period != NULL);
+    assert(prescaler != NULL || period != NULL);
     if (channel == PWM_CHANNEL_0) {
-        *prescaler = (READ_REG(PWM->CLKDIV01) & PWM_CLKDIV01_CH0);
-        *period = (READ_REG(PWM->PERIOD) & PWM_PERIOD_CH0);
+        if (prescaler) {
+            *prescaler = (READ_REG(PWM->CLKDIV01) & PWM_CLKDIV01_CH0);
+        }
+        if (period) {
+            *period = (READ_REG(PWM->PERIOD) & PWM_PERIOD_CH0);
+        }
         return true;
     } else if (channel == PWM_CHANNEL_1) {
-        *prescaler = (READ_REG(PWM->CLKDIV01) & PWM_CLKDIV01_CH1) >> PWM_CLKDIV01_CH1_Pos;
-        *period = (READ_REG(PWM->PERIOD) & PWM_PERIOD_CH1) >> PWM_PERIOD_CH1_Pos;
+        if (prescaler) {
+            *prescaler = (READ_REG(PWM->CLKDIV01) & PWM_CLKDIV01_CH1) >> PWM_CLKDIV01_CH1_Pos;
+        }
+        if (period) {
+            *period = (READ_REG(PWM->PERIOD) & PWM_PERIOD_CH1) >> PWM_PERIOD_CH1_Pos;
+        }
         return true;
     } else if (channel == PWM_CHANNEL_2) {
-        *prescaler = (READ_REG(PWM->CLKDIV23) & PWM_CLKDIV01_CH1) >> PWM_CLKDIV23_CH2_Pos;
-        *period = (READ_REG(PWM->PERIOD) & PWM_PERIOD_CH2) >> PWM_PERIOD_CH2_Pos;
+        if (prescaler) {
+            *prescaler = (READ_REG(PWM->CLKDIV23) & PWM_CLKDIV01_CH1) >> PWM_CLKDIV23_CH2_Pos;
+        }
+        if (period) {
+            *period = (READ_REG(PWM->PERIOD) & PWM_PERIOD_CH2) >> PWM_PERIOD_CH2_Pos;
+        }
         return true;
     } else if (channel == PWM_CHANNEL_3) {
-        *prescaler = (READ_REG(PWM->CLKDIV23) & PWM_CLKDIV23_CH3) >> PWM_CLKDIV23_CH3_Pos;
-        *period = (READ_REG(PWM->PERIOD) & PWM_PERIOD_CH3) >> PWM_PERIOD_CH3_Pos;
+        if (prescaler) {
+            *prescaler = (READ_REG(PWM->CLKDIV23) & PWM_CLKDIV23_CH3) >> PWM_CLKDIV23_CH3_Pos;
+        }
+        if (period) {
+            *period = (READ_REG(PWM->PERIOD) & PWM_PERIOD_CH3) >> PWM_PERIOD_CH3_Pos;
+        }
         return true;
     } else if (channel == PWM_CHANNEL_4) {
         uint32_t bits = (READ_REG(PWM->CH4CR2) & (PWM_CH4CR1_DIV | PWM_CH4CR1_PRD));
-        *prescaler = (bits >> PWM_CH4CR1_DIV_Pos) & 0xFFFF;
-        *period = (bits >> PWM_CH4CR1_PRD_Pos) & 0xFF;
+        if (prescaler) {
+            *prescaler = (bits >> PWM_CH4CR1_DIV_Pos) & 0xFFFF;
+        }
+        if (period) {
+            *period = (bits >> PWM_CH4CR1_PRD_Pos) & 0xFF;
+        }
         return true;
     }
     return false;
@@ -87,9 +106,22 @@ static inline bool PWM_Pulse_Get(uint32_t channel, uint32_t * pulse) {
     return false;
 }
 
-static inline bool PWM_Calc_Prescaler_Period_By_Freq(uint32_t freq, uint32_t * prescaler, uint32_t * period) {
-    assert(prescaler != NULL);
-    assert(period != NULL);
+
+static inline int PWM_CounterMode_Get(uint32_t channel) {
+    if (channel == PWM_CHANNEL_4) {
+		//MODIFY_REG(hpwm->Instance->CH4CR2, PWM_CH4CR2_CNTTYPE, (CounterMode << PWM_CH4CR2_CNTTYPE_Pos));
+        return (READ_BIT(PWM->CH4CR2, PWM_CH4CR2_CNTTYPE) >> PWM_CH4CR2_CNTTYPE_Pos);
+	} else {
+		//MODIFY_REG(hpwm->Instance->CR, (0x0FF << (PWM_CR_CNTTYPE0_Pos + Channel * 2)), 
+		//			(CounterMode << (PWM_CR_CNTTYPE0_Pos + Channel * 2)));
+        return READ_BIT(PWM->CR, (0x0FF << (PWM_CR_CNTTYPE0_Pos + channel * 2))) >> (PWM_CR_CNTTYPE0_Pos + channel * 2);
+	}
+}
+
+static inline bool PWM_Calc_Prescaler_Period_By_Freq(uint32_t freq, uint32_t * out_prescaler, uint32_t * out_period) {
+    assert(out_prescaler != NULL);
+    assert(out_period != NULL);
+#if 0
     if (freq > 0) {
         uint32_t top = APB_CLK / freq;
         if (top > XT804_PWM_PERIOD_MAX) {
@@ -102,6 +134,39 @@ static inline bool PWM_Calc_Prescaler_Period_By_Freq(uint32_t freq, uint32_t * p
         }
         return true;
     }
+#else
+    // 1. period 要能整除 (APB_CLK / freq), 不能整除也要保证余数最小。 这样可以保证freq精度。
+    // 2. 使 period 尽量大，最大到256.  这样可以保证占空比精度。
+    // 3. 使 period有更多因数， 特别是2， 5，10 的倍数. 这样方便设置占空比，有利于保证占空比精度。
+    if (freq > 0 && freq <= APB_CLK) {
+        int top = APB_CLK / freq;
+
+        int period = 1;
+        int prescaler = top / period;
+        const int factorlist[] = { 19, 17, 13, 11, 7, 5, 3, 2 };
+        for (int i = 0; i < sizeof(factorlist)/sizeof(factorlist[0]); i++) {
+            const int factor = factorlist[i]; 
+            int next_period = period;
+            while (next_period < XT804_PWM_PERIOD_MAX) {
+                period = next_period;
+                if (prescaler % factor == 0) {
+                    prescaler /= factor;
+                    next_period *= factor;
+                } else {
+                    break;
+                }
+            }
+        }
+        prescaler = top / period;
+
+        *out_period = period - 1;
+        *out_prescaler = prescaler;
+
+        TLOG("expected Freq: %u, got Freq:%f, loss: %.2f%%", freq, ((float)APB_CLK/(period * prescaler)), (((float)APB_CLK/(period * prescaler)) - freq) / freq * 100)
+
+        return true;
+    }
+#endif    
     return false;
 }
 
@@ -156,14 +221,16 @@ void mp_machine_pwm_print(const mp_print_t *print, mp_obj_t self_in, mp_print_ki
 // PWM(pin)
 mp_obj_t mp_machine_pwm_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     // Check number of arguments
-    mp_arg_check_num(n_args, n_kw, 1, 10, true);
+    mp_arg_check_num(n_args, n_kw, 1, 12, true);
 
-    enum { ARG_mode, ARG_freq, ARG_auto_reload_preload, ARG_counter_mode, ARG_prescaler, ARG_period, ARG_pulse, ARG_dtdiv, ARG_dtcnt };
+    enum { ARG_mode, ARG_freq, ARG_duty, ARG_oneshot, ARG_inverse, ARG_alignment, ARG_prescaler, ARG_period, ARG_pulse, ARG_dtdiv, ARG_dtcnt };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_mode, MP_ARG_INT, {.u_int = PWM_OUT_MODE_INDEPENDENT} },
         { MP_QSTR_freq, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
-        { MP_QSTR_auto_reload_preload, MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = true} },
-        { MP_QSTR_counter_mode, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = PWM_COUNTERMODE_EDGEALIGNED_DOWN} },
+        { MP_QSTR_duty, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
+        { MP_QSTR_oneshot, MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = false} },
+        { MP_QSTR_inverse, MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = false} },
+        { MP_QSTR_alignment, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = PWM_COUNTERMODE_EDGEALIGNED_DOWN} },
         { MP_QSTR_prescaler, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
         { MP_QSTR_period, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
         { MP_QSTR_pulse, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
@@ -190,34 +257,29 @@ mp_obj_t mp_machine_pwm_make_new(const mp_obj_type_t *type, size_t n_args, size_
         mp_raise_ValueError(MP_ERROR_TEXT("specify Pin don't support hardward PWM."));
     }
 
-
-    TDEBUG("0000000000000000000000000 n_args:%u", n_args);
-
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args - 1, n_kw, all_args + 1, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    TDEBUG("1111111111111111111111111111");
-    TDEBUG("channel:%d, mode:%d, freq: %d, auto_reload_preload:%d, counter_mode:%d, prescaler:%d, period:%d, pulse:%d, dtdiv:%d, dtcnt:%d",
+    TDEBUG("channel:%d, mode:%d, freq: %d, duty:%f, oneshot:%d, inverse:%d, alignment:%d, prescaler:%d, period:%d, pulse:%d, dtdiv:%d, dtcnt:%d",
         pwnchan,
         args[ARG_mode].u_int,
         args[ARG_freq].u_obj == mp_const_none ? -1 : mp_obj_get_int(args[ARG_freq].u_obj),
-        args[ARG_auto_reload_preload].u_bool,
-        args[ARG_counter_mode].u_int,
+        args[ARG_duty].u_obj == mp_const_none ? -1 : mp_obj_get_float(args[ARG_duty].u_obj),
+        args[ARG_oneshot].u_bool ? 1:0,
+        args[ARG_inverse].u_bool ? 1:0,
+        args[ARG_alignment].u_int,
         args[ARG_prescaler].u_obj == mp_const_none ? -1 :mp_obj_get_int(args[ARG_prescaler].u_obj),
         args[ARG_period].u_obj == mp_const_none ? -1 :mp_obj_get_int(args[ARG_period].u_obj),
         args[ARG_pulse].u_obj == mp_const_none ? -1 :mp_obj_get_int(args[ARG_pulse].u_obj),
         args[ARG_dtdiv].u_obj == mp_const_none ? -1 :mp_obj_get_int(args[ARG_dtdiv].u_obj),
         args[ARG_dtcnt].u_obj == mp_const_none ? -1 :mp_obj_get_int(args[ARG_dtcnt].u_obj)
     );
-   
 
     mp_int_t mode = args[ARG_mode].u_int;
     if (!IS_PWM_OUTMODE(mode)) {
         mp_raise_ValueError(MP_ERROR_TEXT("Invalid PWM out mode."));
         
     }
-
-    TDEBUG("333333333333333333333");
 
     if (mode == PWM_OUT_MODE_2COMPLEMENTARY || mode == PWM_OUT_MODE_2SYNC) {
         if (pwnchan != 0 && pwnchan != 2) {
@@ -230,34 +292,26 @@ mp_obj_t mp_machine_pwm_make_new(const mp_obj_type_t *type, size_t n_args, size_
         pwnchan = 0;
     }
 
-    TDEBUG("4444444444444444444444");
-
     const machine_pwm_obj_t * self = &machine_pwm_obj[pwnchan];
     if ((self->feature & pin->features) == 0) {
         mp_raise_ValueError(MP_ERROR_TEXT("this Channel doesn't support specify PWM out mode."));
     }
 
-    TDEBUG("5555555555555555555");
-    
-    mp_int_t counter_mode = args[ARG_counter_mode].u_int;
-    if (!IS_PWM_COUNTER_MODE(counter_mode)) {
-        mp_raise_ValueError(MP_ERROR_TEXT("Invalid PWM counter mode."));
+    mp_int_t alignment = args[ARG_alignment].u_int;
+    if (!IS_PWM_COUNTER_MODE(alignment)) {
+        mp_raise_ValueError(MP_ERROR_TEXT("Invalid PWM `alignment' setting."));
     }
-
-    TDEBUG("66666666666666666");
-
 
     bool prescaler_got = false;
     bool period_got = false;
     mp_int_t prescaler = 0;
     mp_int_t period = 0;
     if (args[ARG_freq].u_obj == mp_const_none) {
-        TDEBUG("7777777777777777777");
         // parse prescaler and period
         prescaler_got = mp_obj_get_int_maybe(args[ARG_prescaler].u_obj, &prescaler);
         period_got = mp_obj_get_int_maybe(args[ARG_period].u_obj, &period);
 
-        TDEBUG("8888888888888888888:prescaler:%d period:%d", prescaler, period);
+        TDEBUG("prescaler:%d period:%d", prescaler, period);
         if (!prescaler_got && !period_got) {
             mp_raise_ValueError(MP_ERROR_TEXT("must create PWM with 'freq' setting or with `prescaler' & `period' setting."));
         } else if (prescaler_got && !period_got) {
@@ -272,12 +326,10 @@ mp_obj_t mp_machine_pwm_make_new(const mp_obj_type_t *type, size_t n_args, size_
             mp_raise_ValueError(MP_ERROR_TEXT("invalid `period` value, should be in range [0 ~ 255]."));
         }
     } else {
-        TDEBUG("99999999999999999999");
         mp_int_t freq = mp_obj_int_get_checked(args[ARG_freq].u_obj);
         if (freq <= 0) {
             mp_raise_ValueError(MP_ERROR_TEXT("invalid `freq` value, should be in range [1 ~ 400000000]."));
         } else {
-            TDEBUG("aaaaaaaaaaaaaaaaaaa");
             uint32_t prescaler_u32 = 0;
             uint32_t period_u32 = 0;
             if (PWM_Calc_Prescaler_Period_By_Freq(freq, &prescaler_u32, &period_u32)) {
@@ -295,16 +347,32 @@ mp_obj_t mp_machine_pwm_make_new(const mp_obj_type_t *type, size_t n_args, size_
         // init PWM
         mp_int_t pulse = 0;
         if (!mp_obj_get_int_maybe(args[ARG_pulse].u_obj, &pulse)) {
-            // default to half period
-            pulse = ((period + 1) >> 1) - 1;
+            // no pulse setting, try load from param duty
+            if (mp_obj_is_float(args[ARG_duty].u_obj)) {
+                float ratio = mp_obj_get_float(args[ARG_duty].u_obj);
+                if (ratio < 0 && ratio > 1) {
+                    mp_raise_ValueError(MP_ERROR_TEXT("`duty' must be float number between from 0.0 to 1.0"));
+                }
+                pulse = ratio * period;
+            } else if (mp_obj_is_int(args[ARG_duty].u_obj)) {
+                int ratio = mp_obj_get_int(args[ARG_duty].u_obj);
+                if (ratio != 0 && ratio != 1) {
+                    mp_raise_ValueError(MP_ERROR_TEXT("`duty' must be float number between from 0.0 to 1.0"));
+                }
+                pulse = ratio * period;
+            } else {
+                // no setting for duty, default to half period
+                pulse = ((period + 1) >> 1) - 1;
+            }
         }
 
         PWM_HandleTypeDef pwm;
         pwm.Instance = PWM;
         pwm.Channel = self->channel;
         pwm.Init.OutMode = mode;
-        pwm.Init.CounterMode = counter_mode;
-        pwm.Init.AutoReloadPreload = args[ARG_auto_reload_preload].u_bool ? PWM_AUTORELOAD_PRELOAD_ENABLE : PWM_AUTORELOAD_PRELOAD_DISABLE;
+        pwm.Init.CounterMode = alignment;
+        pwm.Init.AutoReloadPreload = args[ARG_oneshot].u_bool ? PWM_AUTORELOAD_PRELOAD_DISABLE : PWM_AUTORELOAD_PRELOAD_ENABLE;
+        pwm.Init.OutInverse = args[ARG_inverse].u_bool ? PWM_OUT_INVERSE_ENABLE : PWM_OUT_INVERSE_DISABLE;
         pwm.Init.Prescaler = prescaler;
         pwm.Init.Period = period;
         pwm.Init.Pulse = pulse;
@@ -334,7 +402,7 @@ mp_obj_t mp_machine_pwm_make_new(const mp_obj_type_t *type, size_t n_args, size_
             
             pwm.Init.Dtcnt = dtcnt;
         }
-        
+
         TDEBUG("PWM mapping and start: pulse:%u", pulse);
 
         __HAL_RCC_PWM_CLK_ENABLE();
@@ -383,17 +451,28 @@ void mp_machine_pwm_freq_set(machine_pwm_obj_t *self, mp_int_t freq) {
     uint32_t prescaler = 0;
     uint32_t period = 0;
 
+    int counter_mode = PWM_CounterMode_Get(self->channel);
+
     float ratio = 0;
     if (PWM_Freq_Get(self->channel, &prescaler, &period)) {
         uint32_t pulse = 0;
         if (PWM_Pulse_Get(self->channel, &pulse)) {
-            ratio = ((pulse + 1.0) / (period + 1.0));
+            if (counter_mode == PWM_COUNTERMODE_CENTERALIGNED) {
+                ratio = ((2.0 * pulse) + 1.0) / (2.0 * (period + 1.0));
+            } else {
+                ratio = ((pulse + 1.0) / (period + 1.0));
+            }
             TDEBUG("mp_machine_pwm_freq_set: ratio:%f", ratio);
         }
     }
 
     if (PWM_Calc_Prescaler_Period_By_Freq(freq, &prescaler, &period)) {
         uint32_t pulse = period * ratio;
+        if (counter_mode == PWM_COUNTERMODE_CENTERALIGNED) {
+            pulse = ((2 * (period + 1)) * ratio - 1) / 2;
+        } else {
+            pulse = (period + 1) * ratio;
+        }
         
         PWM_HandleTypeDef pwm;
         pwm.Instance = PWM;
@@ -420,78 +499,67 @@ void mp_machine_pwm_freq_set(machine_pwm_obj_t *self, mp_int_t freq) {
 }
 
 mp_obj_t mp_machine_pwm_duty_get(machine_pwm_obj_t *self) {
-    uint32_t duty = 0;
-    if (PWM_Pulse_Get(self->channel, &duty)) {
-        return MP_OBJ_NEW_SMALL_INT(duty);
+    uint32_t pulse = 0;
+    if (PWM_Pulse_Get(self->channel, &pulse)) {
+        return MP_OBJ_NEW_SMALL_INT(pulse);
     }
     return MP_OBJ_NEW_SMALL_INT(0);
 }
 
-void mp_machine_pwm_duty_set(machine_pwm_obj_t *self, mp_int_t duty) {
-    // uint32_t top = pwm_hw->slice[self->slice].top;
-    // uint32_t cc = duty_u16 * (top + 1) / 65535;
-    // pwm_set_chan_level(self->slice, self->channel, cc);
-    // pwm_set_enabled(self->slice, true);
- 
+void mp_machine_pwm_duty_set(machine_pwm_obj_t *self, mp_int_t pulse) {
     PWM_HandleTypeDef pwm;
     pwm.Instance = PWM;
     pwm.Channel = self->channel;
-    if (HAL_OK != HAL_PWM_Duty_Set(&pwm, self->channel, duty)) {
+    if (HAL_OK != HAL_PWM_Duty_Set(&pwm, self->channel, pulse)) {
         mp_raise_OSError(MP_EIO);
     }
 }
 
 mp_obj_t mp_machine_pwm_duty_get_u16(machine_pwm_obj_t *self) {
-    uint32_t prescaler = 0;
     uint32_t period = 0;
-    if (PWM_Freq_Get(self->channel, &prescaler, &period)) {
+    if (PWM_Freq_Get(self->channel, NULL, &period)) {
         uint32_t pulse = 0;
-         
         if (PWM_Pulse_Get(self->channel, &pulse)) {
-            TDEBUG("mp_machine_pwm_duty_get_u16: prescaler:%u, period:%u, pulse:%u",
-                prescaler, period, pulse
+            TDEBUG("mp_machine_pwm_duty_get_u16: period:%u, pulse:%u",
+                period, pulse
             );
-            return MP_OBJ_NEW_SMALL_INT((pulse + 1) * (UINT16_MAX + 1) / (period + 1));
+            int duty_u16 = 0;
+            int counter_mode = PWM_CounterMode_Get(self->channel);
+            if (counter_mode == PWM_COUNTERMODE_CENTERALIGNED) {
+                duty_u16 = (((2 * pulse) + 1) * (UINT16_MAX + 1)) / (2 * (period + 1));
+            } else {
+                duty_u16 = (pulse + 1) * (UINT16_MAX + 1) / (period + 1);
+            }
+            return MP_OBJ_NEW_SMALL_INT(duty_u16);
         }
     }
     return MP_OBJ_NEW_SMALL_INT(0);
 }
 
 void mp_machine_pwm_duty_set_u16(machine_pwm_obj_t *self, mp_int_t duty_u16) {
-    // uint32_t top = pwm_hw->slice[self->slice].top;
-    // uint32_t cc = duty_u16 * (top + 1) / 65535;
-    // pwm_set_chan_level(self->slice, self->channel, cc);
-    // pwm_set_enabled(self->slice, true);
-    uint32_t prescaler = 0;
     uint32_t period = 0;
-    if (PWM_Freq_Get(self->channel, &prescaler, &period)) {
-        uint32_t pulse = duty_u16 * (period + 1) / (UINT16_MAX + 1);
+    if (PWM_Freq_Get(self->channel, NULL, &period)) {
+        mp_int_t pulse = 0; 
+        int counter_mode = PWM_CounterMode_Get(self->channel);
+        if (counter_mode == PWM_COUNTERMODE_CENTERALIGNED) {
+            pulse = (((2 * (period + 1) * duty_u16) / (UINT16_MAX + 1)) - 1) / 2;
+        } else {
+            pulse = (duty_u16 * (period + 1) / (UINT16_MAX + 1)) - 1;
+        }
 
-        TDEBUG("mp_machine_pwm_duty_set_u16: duty_u16:%d, result: prescaler:%u, period:%u, pulse: %u",
-            duty_u16, prescaler, period, pulse
+        TDEBUG("mp_machine_pwm_duty_set_u16: duty_u16:%d, result: period:%u, pulse: %u",
+            duty_u16, period, pulse
         );
 
-        PWM_HandleTypeDef pwm;
-        pwm.Instance = PWM;
-        pwm.Channel = self->channel;
-        if (HAL_OK != HAL_PWM_Duty_Set(&pwm, self->channel, pulse)) {
-            mp_raise_OSError(MP_EIO);
-        }
+        mp_machine_pwm_duty_set(self, pulse);
     } else {
         mp_raise_OSError(MP_EIO);
     }
 }
 
 mp_obj_t mp_machine_pwm_duty_get_ns(machine_pwm_obj_t *self) {
-    // uint32_t source_hz = clock_get_hz(clk_sys);
-    // uint32_t slice_hz = 16 * source_hz / pwm_hw->slice[self->slice].div;
-    // uint32_t cc = pwm_hw->slice[self->slice].cc;
-    // cc = (cc >> (self->channel ? PWM_CH0_CC_B_LSB : PWM_CH0_CC_A_LSB)) & 0xffff;
-    // return MP_OBJ_NEW_SMALL_INT((uint64_t)cc * 1000000000ULL / slice_hz);
-
     uint32_t prescaler = 0;
-    uint32_t period = 0;
-    if (PWM_Freq_Get(self->channel, &prescaler, &period)) {
+    if (PWM_Freq_Get(self->channel, &prescaler, NULL)) {
         uint32_t pulse = 0;
         if (PWM_Pulse_Get(self->channel, &pulse)) {
             return MP_OBJ_NEW_SMALL_INT(((pulse + 1) * prescaler) * 1000000000ULL / APB_CLK);
@@ -501,29 +569,15 @@ mp_obj_t mp_machine_pwm_duty_get_ns(machine_pwm_obj_t *self) {
 }
 
 void mp_machine_pwm_duty_set_ns(machine_pwm_obj_t *self, mp_int_t duty_ns) {
-    // uint32_t source_hz = clock_get_hz(clk_sys);
-    // uint32_t slice_hz = 16 * source_hz / pwm_hw->slice[self->slice].div;
-    // uint32_t cc = (uint64_t)duty_ns * slice_hz / 1000000000ULL;
-    // if (cc > 65535) {
-    //     mp_raise_ValueError(MP_ERROR_TEXT("duty larger than period"));
-    // }
-    // pwm_set_chan_level(self->slice, self->channel, cc);
-    // pwm_set_enabled(self->slice, true);
     uint32_t prescaler = 0;
     uint32_t period = 0;
     if (PWM_Freq_Get(self->channel, &prescaler, &period)) {
         uint32_t pulse = (duty_ns * (APB_CLK/1000000000ULL)) / ((period + 1) * prescaler);
 
-        TDEBUG("mp_machine_pwm_duty_set_ns: duty_ns:%d, result: prescaler:%u, period:%u, pulse: %u",
-            duty_ns, prescaler, period, pulse
+        TDEBUG("mp_machine_pwm_duty_set_ns: duty_ns:%d, result: period:%u, pulse: %u",
+            duty_ns, period, pulse
         );
-
-        PWM_HandleTypeDef pwm;
-        pwm.Instance = PWM;
-        pwm.Channel = self->channel;
-        if (HAL_OK != HAL_PWM_Duty_Set(&pwm, self->channel, pulse)) {
-            mp_raise_OSError(MP_EIO);
-        }
+        mp_machine_pwm_duty_set(self, pulse);
     } else {
         mp_raise_OSError(MP_EIO);
     }
@@ -546,13 +600,22 @@ STATIC mp_obj_t machine_pwm_info(mp_obj_t self_in) {
     if (PWM_Freq_Get(self->channel, &prescaler, &period)) {
         uint32_t pulse = 0;
         if (PWM_Pulse_Get(self->channel, &pulse)) {
-            TDEBUG("prescaler:%u period:%u pulse:%u", prescaler,  period, pulse);
-            mp_obj_t tuple[3] = {
+            float duty = 0;
+            int counter_mode = PWM_CounterMode_Get(self->channel);
+            if (counter_mode == PWM_COUNTERMODE_CENTERALIGNED) {
+                duty = (pulse * 2 + 1) / (period + 1) * 2;
+            } else {
+                duty = (pulse + 1) / (float)(period + 1);
+            }
+             
+            TDEBUG("prescaler:%u period:%u pulse:%u duty:%.2f", prescaler,  period, pulse, duty);
+            mp_obj_t tuple[4] = {
                 mp_obj_new_int(prescaler),
                 mp_obj_new_int(period),
-                mp_obj_new_int(pulse)
+                mp_obj_new_int(pulse),
+                mp_obj_new_float(duty)
             };
-            return mp_obj_new_tuple(3, tuple);
+            return mp_obj_new_tuple(4, tuple);
         }
     }
     return mp_const_none;
@@ -582,8 +645,27 @@ STATIC mp_obj_t machine_pwm_duty(size_t n_args, const mp_obj_t *args) {
         return mp_machine_pwm_duty_get(self);
     } else {
         // Set duty cycle.
-        mp_int_t duty = mp_obj_get_int(args[1]);
-        mp_machine_pwm_duty_set(self, duty);
+        if (mp_obj_is_int(args[1])) {
+            mp_int_t pulse = mp_obj_get_int(args[1]);
+            mp_machine_pwm_duty_set(self, pulse);
+        } else if (mp_obj_is_float(args[1])) {
+            float ratio = mp_obj_get_float(args[1]);
+            if (ratio < 0 && ratio > 1) {
+                mp_raise_ValueError(MP_ERROR_TEXT("`duty' must be integer or float number between from 0.0 to 1.0"));
+            }
+            uint32_t period = 0;
+            if (PWM_Freq_Get(self->channel, NULL, &period)) {
+                mp_int_t pulse = 0;
+                int counter_mode = PWM_CounterMode_Get(self->channel);
+                if (counter_mode == PWM_COUNTERMODE_CENTERALIGNED) {
+                    pulse = ((ratio * (period + 1) * 2) - 1) / 2;
+                } else {
+                    pulse = ratio * (period + 1) - 1;
+                }
+                mp_machine_pwm_duty_set(self, pulse);
+            }
+        }
+    
         return mp_const_none;
     }
 }
@@ -635,9 +717,9 @@ STATIC const mp_rom_map_elem_t machine_pwm_locals_dict_table[] = {
     // TODO: what's PWM_OUT_MODE_BREAK ?
     //{ MP_ROM_QSTR(MP_QSTR_PWM_OUT_MODE_BREAK), MP_ROM_INT(PWM_OUT_MODE_BREAK) },
     // constant: 
-    { MP_ROM_QSTR(MP_QSTR_COUNTER_EDGE_ALIGNED_UP), MP_ROM_INT(PWM_COUNTERMODE_EDGEALIGNED_UP) },
-    { MP_ROM_QSTR(MP_QSTR_COUNTER_EDGE_ALIGNED_DOWN), MP_ROM_INT(PWM_COUNTERMODE_EDGEALIGNED_DOWN) },
-    { MP_ROM_QSTR(MP_QSTR_COUNTER_CENTER_ALIGNED), MP_ROM_INT(PWM_COUNTERMODE_CENTERALIGNED) },
+    { MP_ROM_QSTR(MP_QSTR_ALIGNMENT_CENTER), MP_ROM_INT(PWM_COUNTERMODE_CENTERALIGNED) },
+    // 参考: 按寄存器手册，在 PWM 模式下，当计数器被设置为沿对齐模式时，需要设置计数方式为递减方式。
+    { MP_ROM_QSTR(MP_QSTR_ALIGNMENT_EDGE), MP_ROM_INT(PWM_COUNTERMODE_EDGEALIGNED_DOWN) },
 };
 STATIC MP_DEFINE_CONST_DICT(machine_pwm_locals_dict, machine_pwm_locals_dict_table);
 

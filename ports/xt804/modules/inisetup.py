@@ -1,9 +1,6 @@
-import uos
-from flashbdev import bdev
+import os
 
-
-def check_bootsec():
-    print("check_bootsec")
+def check_bootsec(bdev):
     buf = bytearray(bdev.ioctl(5, 0))  # 5 is SEC_SIZE
     bdev.readblocks(0, buf)
     empty = True
@@ -28,24 +25,30 @@ factory reprogramming of MicroPython firmware (completely erase flash, followed
 by firmware programming).
 """
         )
-        time.sleep(3)
+        time.sleep(15000)
 
 
-def setup():
-    print("start setup()")
-    check_bootsec()
-    print("Performing initial setup")
-    uos.VfsLfs2.mkfs(bdev)
-    vfs = uos.VfsLfs2(bdev)
-    uos.mount(vfs, "/")
+def setup(force=False):
+    from xt804 import Partition
+    bdev = Partition.find(Partition.TYPE_DATA, label="vfs")
+    bdev = bdev[0] if bdev else None
+
+    if not force:
+        check_bootsec(bdev)
+    print("Performing initial setup...")
+    print("Making file system...")
+    os.VfsLfs2.mkfs(bdev)
+    vfs = os.VfsLfs2(bdev)
+    os.mount(vfs, "/")
+    print("File system mounted.")
+    print("Generating scripts...")
     with open("boot.py", "w") as f:
         f.write(
             """\
 # This file is executed on every boot (including wake-boot from deepsleep)
-#import esp
-#esp.osdebug(None)
 #import webrepl
 #webrepl.start()
 """
         )
+    print("Initial setup done.")
     return vfs

@@ -42,6 +42,8 @@
 #include "shared/timeutils/timeutils.h"
 
 #include "modxt804.h"
+#include "xt804_apa102.h"
+#include "hal_common.h"
 
 //#include "machine_rtc.h"
 //#include "modesp32.h"
@@ -54,7 +56,6 @@
 // #include "../heap_private.h"
 
 
-extern int g_colorful_print;
 STATIC mp_obj_t xt804_toggle_color_print(size_t n_args, const mp_obj_t *args) {
     if (n_args == 0) {
         g_colorful_print = !g_colorful_print;
@@ -86,7 +87,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(xt804_read_int8_obj, xt804_read_int8);
 STATIC mp_obj_t xt804_write_int32(const mp_obj_t addr, const mp_obj_t val) {
     mp_int_t address = mp_obj_get_int(addr);
     if (address < 0x20000000) {
-        mp_raise_ValueError(MP_ERROR_TEXT("invalid address(must >= 0x2000000)"));
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid address(must >= 0x20000000)"));
     }
     mp_int_t value = mp_obj_get_int(val);
     *((int32_t*)(address)) = (value & 0xFFFFFFFF);
@@ -97,7 +98,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(xt804_write_int32_obj, xt804_write_int32);
 STATIC mp_obj_t xt804_write_int16(const mp_obj_t addr, const mp_obj_t val) {
     mp_int_t address = mp_obj_get_int(addr);
     if (address < 0x20000000) {
-        mp_raise_ValueError(MP_ERROR_TEXT("invalid address(must >= 0x2000000)"));
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid address(must >= 0x20000000)"));
     }
     mp_int_t value = mp_obj_get_int(val);
     if ((value & 0xFFFF) != 0) {
@@ -111,7 +112,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(xt804_write_int16_obj, xt804_write_int16);
 STATIC mp_obj_t xt804_write_int8(const mp_obj_t addr, const mp_obj_t val) {
     mp_int_t address = mp_obj_get_int(addr);
     if (address < 0x20000000) {
-        mp_raise_ValueError(MP_ERROR_TEXT("invalid address(must >= 0x2000000)"));
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid address(must >= 0x20000000)"));
     }
     mp_int_t value = mp_obj_get_int(val);
     if ((value & 0xFF) != 0) {
@@ -122,6 +123,23 @@ STATIC mp_obj_t xt804_write_int8(const mp_obj_t addr, const mp_obj_t val) {
     return mp_obj_new_int(*((int8_t*)(address)));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(xt804_write_int8_obj, xt804_write_int8);
+
+
+STATIC mp_obj_t xt804_apa102_write_wrapper(mp_obj_t clockPin, mp_obj_t dataPin, mp_obj_t buf) {
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(buf, &bufinfo, MP_BUFFER_READ);
+    const machine_pin_obj_t * clockPinObj = mp_hal_get_pin_obj(clockPin);
+    if (!clockPinObj) {
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid clock Pin."));
+    } 
+    const machine_pin_obj_t * dataPinObj = mp_hal_get_pin_obj(dataPin);
+    if (!dataPinObj) {
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid data Pin."));
+    }
+    xt804_apa102_write(clockPinObj, dataPinObj, (uint8_t *)bufinfo.buf, bufinfo.len);
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(xt804_apa102_write_obj, xt804_apa102_write_wrapper);
 
 
 #if 0
@@ -265,8 +283,75 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(esp32_idf_heap_info_obj, esp32_idf_heap_info);
 #endif
 
 
+#define XT804_RUNNING_IMAGE_HEADER_OFFSET (0x8010000)
+#define XT804_RUNNING_IMAGE_ADDR_OFFSET (0x8)
+#define XT804_RUNNING_IMAGE_SIZE_OFFSET (0xC)
+#define XT804_RUNNING_IMAGE_CRC32_OFFSET (0x18)
+
+#include "lib/uzlib/uzlib.h"
+
+/* crc is previous value for incremental computation, 0xffffffff initially */
+uint32_t TINFCC uzlib_crc32(const void *data, unsigned int length, uint32_t crc);
+
+STATIC mp_obj_t xt804_check_fw(void) {
+    
+    char * image_header = (char *)(XT804_RUNNING_IMAGE_HEADER_OFFSET);
+
+    uint32_t addr = *(uint32_t *)(image_header + XT804_RUNNING_IMAGE_ADDR_OFFSET);
+    uint32_t size = *(uint32_t *)(image_header + XT804_RUNNING_IMAGE_SIZE_OFFSET);
+
+    if (size > 1024 * 1024) {
+        TERROR("Check failed. Invalid size of Firmware: %d", size);
+        return mp_const_false;
+    }
+    /*
+    MD5_CTX ctx;
+    MD5Init(&ctx);
+    MD5Update(&ctx, addr, size);
+    unsigned char digest[16];
+    MD5Final(digest, &ctx);
+    printf("md5: ");
+    for (int i = 0; i < 16; i++) {
+        printf("%02x", digest[i]);
+    }
+    printf("\n");
+    */
+    uint32_t crc32_sig = *(uint32_t *)(image_header + XT804_RUNNING_IMAGE_CRC32_OFFSET);
+    uint32_t crc32 = uzlib_crc32((void*)addr, size, 0xFFFFFFFF);
+
+    TLOG("Checksum CRC32:%x, Firmware CRC32:%x, Firmware Size:%u", ~crc32_sig, ~crc32, size);
+
+    return mp_obj_new_bool(crc32 == crc32_sig);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(xt804_check_fw_obj, xt804_check_fw);
+
+
 STATIC const mp_rom_map_elem_t xt804_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_xt804) },
+
+    //================== from esp =========================
+    //{ MP_ROM_QSTR(MP_QSTR_osdebug), MP_ROM_PTR(&esp_osdebug_obj) },
+    //{ MP_ROM_QSTR(MP_QSTR_sleep_type), MP_ROM_PTR(&esp_sleep_type_obj) },
+    //{ MP_ROM_QSTR(MP_QSTR_deepsleep), MP_ROM_PTR(&esp_deepsleep_obj) },
+    //{ MP_ROM_QSTR(MP_QSTR_flash_id), MP_ROM_PTR(&esp_flash_id_obj) },
+    //{ MP_ROM_QSTR(MP_QSTR_flash_read), MP_ROM_PTR(&esp_flash_read_obj) },
+    //{ MP_ROM_QSTR(MP_QSTR_flash_write), MP_ROM_PTR(&esp_flash_write_obj) },
+    // { MP_ROM_QSTR(MP_QSTR_flash_erase), MP_ROM_PTR(&esp_flash_erase_obj) },
+    // { MP_ROM_QSTR(MP_QSTR_flash_size), MP_ROM_PTR(&esp_flash_size_obj) },
+    // { MP_ROM_QSTR(MP_QSTR_flash_user_start), MP_ROM_PTR(&esp_flash_user_start_obj) },
+
+    { MP_ROM_QSTR(MP_QSTR_apa102_write), MP_ROM_PTR(&xt804_apa102_write_obj) },
+
+    //{ MP_ROM_QSTR(MP_QSTR_dht_readinto), MP_ROM_PTR(&dht_readinto_obj) },
+    { MP_ROM_QSTR(MP_QSTR_check_fw), MP_ROM_PTR(&xt804_check_fw_obj) },
+    //{ MP_ROM_QSTR(MP_QSTR_esf_free_bufs), MP_ROM_PTR(&esp_esf_free_bufs_obj) },
+
+    // #if MODESP_INCLUDE_CONSTANTS
+    // { MP_ROM_QSTR(MP_QSTR_SLEEP_NONE), MP_ROM_INT(NONE_SLEEP_T) },
+    // { MP_ROM_QSTR(MP_QSTR_SLEEP_LIGHT), MP_ROM_INT(LIGHT_SLEEP_T) },
+    // { MP_ROM_QSTR(MP_QSTR_SLEEP_MODEM), MP_ROM_INT(MODEM_SLEEP_T) },
+    // #endif
+    //=========================================================
 
     { MP_ROM_QSTR(MP_QSTR_color_print), MP_ROM_PTR(&xt804_toggle_color_print_obj) },
     { MP_ROM_QSTR(MP_QSTR_read_int32), MP_ROM_PTR(&xt804_read_int32_obj) },
@@ -292,6 +377,7 @@ STATIC const mp_rom_map_elem_t xt804_module_globals_table[] = {
     //#if CONFIG_IDF_TARGET_ESP32
     //{ MP_ROM_QSTR(MP_QSTR_ULP), MP_ROM_PTR(&esp32_ulp_type) },
     //#endif
+
 
     //{ MP_ROM_QSTR(MP_QSTR_WAKEUP_ALL_LOW), MP_ROM_FALSE },
     //{ MP_ROM_QSTR(MP_QSTR_WAKEUP_ANY_HIGH), MP_ROM_TRUE },
