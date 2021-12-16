@@ -34,19 +34,18 @@
 #include "shared/timeutils/timeutils.h"
 #include "extmod/utime_mphal.h"
 #include "hal_common.h"
+#include "mphalport.h"
 
 STATIC mp_obj_t mp_utime_localtime(size_t n_args, const mp_obj_t *args) {
     timeutils_struct_time_t tm;
-    mp_int_t seconds;
     if (n_args == 0 || args[0] == mp_const_none) {
-        TDEBUG("mp_utime_time:gettimeofday");
-        struct timeval tv;
-        gettimeofday(&tv, NULL);
-        seconds = tv.tv_sec;
+        RTC_TimeTypeDef rtctime;
+        HAL_PMU_RTC_GetTime(&xt804_rtc_source, &rtctime);
+        timeutils_rtc_to_struct_time(&rtctime, &tm);
     } else {
-        seconds = mp_obj_get_int(args[0]);
+        mp_int_t seconds = mp_obj_get_int(args[0]);
+        timeutils_seconds_since_epoch_to_struct_time(seconds, &tm);
     }
-    timeutils_seconds_since_epoch_to_struct_time(seconds, &tm);
     mp_obj_t tuple[8] = {
         tuple[0] = mp_obj_new_int(tm.tm_year),
         tuple[1] = mp_obj_new_int(tm.tm_mon),
@@ -78,13 +77,16 @@ STATIC mp_obj_t mp_utime_mktime(mp_obj_t tuple) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mp_utime_mktime_obj, mp_utime_mktime);
 
 STATIC mp_obj_t mp_utime_time(void) {
-    TDEBUG("mp_utime_time:gettimeofday");
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    TDEBUG("gettimeofday: %l", tv.tv_sec);
-    return mp_obj_new_int(tv.tv_sec);
+    uint64_t sec = mp_hal_time_s();
+    return mp_obj_new_int(sec);
 }
 MP_DEFINE_CONST_FUN_OBJ_0(mp_utime_time_obj, mp_utime_time);
+
+STATIC mp_obj_t mp_utime_unixtime(void) {
+    uint64_t sec = mp_hal_time_s() + TIMEUTILS_SECONDS_1970_TO_2000;
+    return mp_obj_new_int(sec);
+}
+MP_DEFINE_CONST_FUN_OBJ_0(mp_utime_unixtime_obj, mp_utime_unixtime);
 
 STATIC const mp_rom_map_elem_t mp_module_utime_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_time) },
@@ -93,6 +95,7 @@ STATIC const mp_rom_map_elem_t mp_module_utime_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_localtime), MP_ROM_PTR(&mp_utime_localtime_obj) },
     { MP_ROM_QSTR(MP_QSTR_mktime), MP_ROM_PTR(&mp_utime_mktime_obj) },
     { MP_ROM_QSTR(MP_QSTR_time), MP_ROM_PTR(&mp_utime_time_obj) },
+    { MP_ROM_QSTR(MP_QSTR_unixtime), MP_ROM_PTR(&mp_utime_unixtime_obj) },
     { MP_ROM_QSTR(MP_QSTR_sleep), MP_ROM_PTR(&mp_utime_sleep_obj) },
     { MP_ROM_QSTR(MP_QSTR_sleep_ms), MP_ROM_PTR(&mp_utime_sleep_ms_obj) },
     { MP_ROM_QSTR(MP_QSTR_sleep_us), MP_ROM_PTR(&mp_utime_sleep_us_obj) },
@@ -102,6 +105,8 @@ STATIC const mp_rom_map_elem_t mp_module_utime_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_ticks_add), MP_ROM_PTR(&mp_utime_ticks_add_obj) },
     { MP_ROM_QSTR(MP_QSTR_ticks_diff), MP_ROM_PTR(&mp_utime_ticks_diff_obj) },
     { MP_ROM_QSTR(MP_QSTR_time_ns), MP_ROM_PTR(&mp_utime_time_ns_obj) },
+
+    { MP_ROM_QSTR(MP_QSTR_SECONDS_1970_TO_2000), MP_ROM_INT(TIMEUTILS_SECONDS_1970_TO_2000) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mp_module_utime_globals, mp_module_utime_globals_table);

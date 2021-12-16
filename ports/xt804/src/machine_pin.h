@@ -26,6 +26,7 @@ typedef struct _machine_pin_obj_t {
     pin_gpio_t *    gpio;
     uint32_t        pin;
     uint32_t        features;
+    char            name[4];
     uint8_t         id;
     uint8_t         irq_slot;
 } machine_pin_obj_t;
@@ -47,6 +48,11 @@ const machine_pin_obj_t* machine_pin_get_obj(mp_obj_t pin_in);
 #define PIN_FEATURE_I2C_SCL     ((uint32_t)0x00000800)
 #define PIN_FEATURE_I2C_SDA     ((uint32_t)0x00001000)
 #define PIN_FEATURE_I2S_MCLK    ((uint32_t)0x00002000)
+
+#define PIN_FEATURE_SPI_CLK     ((uint32_t)0x00010000)
+#define PIN_FEATURE_SPI_CS      ((uint32_t)0x00020000)
+#define PIN_FEATURE_SPI_MOSI    ((uint32_t)0x00040000)
+#define PIN_FEATURE_SPI_MISO    ((uint32_t)0x00080000)
 
 
 

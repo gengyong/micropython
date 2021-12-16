@@ -44,6 +44,38 @@
 
 #define INVALID_PIN_ID ((uint32_t)(-1))
 
+static inline uint32_t pin_str_to_pin_id(const char * nm) {
+    char prefix = *nm;
+    int baseIndex = 0;
+    if (prefix >= 'a' && prefix <= 'z') {
+        baseIndex = (prefix - 'a') * 32;
+    } else if (prefix >= 'A' && prefix <= 'Z') {
+        baseIndex = (prefix - 'A') * 32;
+    } else if (prefix >= '0' && prefix <= '9') {
+        int id = 0;
+        const char * p = nm;
+        for (; ((*p) >= '0' && (*p) <= '9'); p++) {
+            id *= 10;
+            id += (*p) - '0';
+        }
+        if (*p != 0) {
+            // if has invalid char in pin num.
+            return INVALID_PIN_ID;
+        }
+        return id;
+    } else {
+        return INVALID_PIN_ID;
+    }
+    int num = 0;
+    for (const char * p = nm + 1; ((*p) >= '0' && (*p) <= '9' && num < 32); p++) {
+        num *= 10;
+        num += (*p) - '0';
+    }
+    if (num < 32) {
+        return baseIndex + num;
+    }
+    return INVALID_PIN_ID;
+}
 
 //-----------------------------------------
 typedef struct _machine_pin_irq_obj_t {
@@ -65,70 +97,70 @@ STATIC const machine_pin_irq_methods_t machine_pin_irq_methods;
 
 // bootmode Pin: PWM2, I2S_MCLK, LSPI_CS, I2S_DO
 STATIC const machine_pin_obj_t machine_pin_obj[] = {
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_0, PIN_FEATURE_GPIO, 0, 0},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_1, PIN_FEATURE_GPIO | PIN_FEATURE_PWN3 | PIN_FEATURE_ADC0 , 1, 1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_2, PIN_FEATURE_GPIO | PIN_FEATURE_PWN0 | PIN_FEATURE_ADC3 , 2, 2},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_3, PIN_FEATURE_GPIO | PIN_FEATURE_PWN1 | PIN_FEATURE_ADC2, 3, 3},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_4, PIN_FEATURE_GPIO | PIN_FEATURE_PWN4 | PIN_FEATURE_ADC1, 4, 4},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_5, PIN_FEATURE_GPIO | PIN_FEATURE_PWNBREAK, 5, 5},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_6, PIN_FEATURE_GPIO, 6, 6},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_7, PIN_FEATURE_GPIO, 7, 7},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_8, PIN_FEATURE_GPIO, 8, 8},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_9, PIN_FEATURE_GPIO, 9, 9},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_10, PIN_FEATURE_GPIO | PIN_FEATURE_PWN0, 10, 10},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_11, PIN_FEATURE_GPIO | PIN_FEATURE_PWN1, 11, 11},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_12, PIN_FEATURE_GPIO | PIN_FEATURE_PWN2, 12, 12},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_13, PIN_FEATURE_GPIO | PIN_FEATURE_PWN3, 13, 13},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_14, PIN_FEATURE_GPIO | PIN_FEATURE_PWN4, 14, 14},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_15, PIN_FEATURE_GPIO | PIN_FEATURE_PWNBREAK, 15, 15},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_16, PIN_FEATURE_NONE, 16, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_17, PIN_FEATURE_NONE, 17, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_18, PIN_FEATURE_NONE, 18, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_19, PIN_FEATURE_NONE, 19, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_20, PIN_FEATURE_NONE, 20, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_21, PIN_FEATURE_NONE, 21, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_22, PIN_FEATURE_NONE, 22, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_23, PIN_FEATURE_NONE, 23, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_24, PIN_FEATURE_NONE, 24, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_25, PIN_FEATURE_NONE, 25, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_26, PIN_FEATURE_NONE, 26, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_27, PIN_FEATURE_NONE, 27, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_28, PIN_FEATURE_NONE, 28, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_29, PIN_FEATURE_NONE, 29, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_30, PIN_FEATURE_NONE, 30, -1},
-    {{&machine_pin_type}, GPIOA, GPIO_PIN_31, PIN_FEATURE_NONE, 31, -1},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_0, PIN_FEATURE_GPIO | PIN_FEATURE_PWN0, 32, 16},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_1, PIN_FEATURE_GPIO | PIN_FEATURE_PWN1, 33, 17},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_2, PIN_FEATURE_GPIO | PIN_FEATURE_PWN2, 34, 18},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_3, PIN_FEATURE_GPIO | PIN_FEATURE_PWN3, 35, 19},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_4, PIN_FEATURE_GPIO, 36, 20},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_5, PIN_FEATURE_GPIO, 37, 21},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_6, PIN_FEATURE_GPIO, 38, 22},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_7, PIN_FEATURE_GPIO, 39, 23},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_8, PIN_FEATURE_GPIO, 40, 24},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_9, PIN_FEATURE_GPIO, 41, 25},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_10, PIN_FEATURE_GPIO, 42, 26},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_11, PIN_FEATURE_GPIO, 43, 27},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_12, PIN_FEATURE_GPIO | PIN_FEATURE_PWN0, 44, 28},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_13, PIN_FEATURE_GPIO | PIN_FEATURE_PWN1, 45, 29},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_14, PIN_FEATURE_GPIO | PIN_FEATURE_PWN2, 46, 30},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_15, PIN_FEATURE_GPIO | PIN_FEATURE_PWN3, 47, 31},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_16, PIN_FEATURE_GPIO | PIN_FEATURE_PWN4, 48, 16},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_17, PIN_FEATURE_GPIO | PIN_FEATURE_PWNBREAK, 49, 17},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_18, PIN_FEATURE_GPIO, 50, 18},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_19, PIN_FEATURE_GPIO | PIN_FEATURE_PWN0, 51, 19},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_20, PIN_FEATURE_GPIO | PIN_FEATURE_PWN1, 52, 20},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_21, PIN_FEATURE_GPIO, 53, 21},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_22, PIN_FEATURE_GPIO, 54, 22},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_23, PIN_FEATURE_GPIO, 55, 23},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_24, PIN_FEATURE_GPIO | PIN_FEATURE_PWN2, 56, 24},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_25, PIN_FEATURE_GPIO | PIN_FEATURE_PWN3, 57, 25},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_26, PIN_FEATURE_GPIO, 58, 26},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_27, PIN_FEATURE_GPIO, 59, 27},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_28, PIN_FEATURE_NONE, 60, 28},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_29, PIN_FEATURE_NONE, 61, 29},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_30, PIN_FEATURE_NONE, 62, 30},
-    {{&machine_pin_type}, GPIOB, GPIO_PIN_31, PIN_FEATURE_NONE, 63, 31},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_0, PIN_FEATURE_GPIO | PIN_FEATURE_SPI_CS, {'A', '0', 0, 0 }, 0, 0},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_1, PIN_FEATURE_GPIO | PIN_FEATURE_PWN3 | PIN_FEATURE_ADC0 , {'A', '1', 0, 0 }, 1, 1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_2, PIN_FEATURE_GPIO | PIN_FEATURE_PWN0 | PIN_FEATURE_ADC3 , {'A', '2', 0, 0 }, 2, 2},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_3, PIN_FEATURE_GPIO | PIN_FEATURE_PWN1 | PIN_FEATURE_ADC2, {'A', '3', 0, 0 }, 3, 3},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_4, PIN_FEATURE_GPIO | PIN_FEATURE_PWN4 | PIN_FEATURE_ADC1, {'A', '4', 0, 0 }, 4, 4},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_5, PIN_FEATURE_GPIO | PIN_FEATURE_PWNBREAK, {'A', '5', 0, 0 }, 5, 5},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_6, PIN_FEATURE_GPIO, {'A', '6', 0, 0 }, 6, 6},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_7, PIN_FEATURE_GPIO | PIN_FEATURE_SPI_MOSI, {'A', '7', 0, 0 }, 7, 7},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_8, PIN_FEATURE_GPIO, {'A', '8', 0, 0 }, 8, 8},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_9, PIN_FEATURE_GPIO, {'A', '9', 0, 0 }, 9, 9},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_10, PIN_FEATURE_GPIO | PIN_FEATURE_PWN0, {'A', '1', '0', 0 }, 10, 10},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_11, PIN_FEATURE_GPIO | PIN_FEATURE_PWN1, {'A', '1', '1', 0 }, 11, 11},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_12, PIN_FEATURE_GPIO | PIN_FEATURE_PWN2, {'A', '1', '2', 0 }, 12, 12},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_13, PIN_FEATURE_GPIO | PIN_FEATURE_PWN3, {'A', '1', '3', 0 }, 13, 13},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_14, PIN_FEATURE_GPIO | PIN_FEATURE_PWN4, {'A', '1', '4', 0 }, 14, 14},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_15, PIN_FEATURE_GPIO | PIN_FEATURE_PWNBREAK, {'A', '1', '5', 0 }, 15, 15},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_16, PIN_FEATURE_NONE, {'A', '1', '6', 0 }, 16, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_17, PIN_FEATURE_NONE, {'A', '1', '7', 0 }, 17, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_18, PIN_FEATURE_NONE, {'A', '1', '8', 0 }, 18, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_19, PIN_FEATURE_NONE, {'A', '1', '9', 0 }, 19, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_20, PIN_FEATURE_NONE, {'A', '2', '0', 0 }, 20, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_21, PIN_FEATURE_NONE, {'A', '2', '1', 0 }, 21, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_22, PIN_FEATURE_NONE, {'A', '2', '2', 0 }, 22, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_23, PIN_FEATURE_NONE, {'A', '2', '3', 0 }, 23, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_24, PIN_FEATURE_NONE, {'A', '2', '4', 0 }, 24, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_25, PIN_FEATURE_NONE, {'A', '2', '5', 0 }, 25, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_26, PIN_FEATURE_NONE, {'A', '2', '6', 0 }, 26, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_27, PIN_FEATURE_NONE, {'A', '2', '7', 0 }, 27, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_28, PIN_FEATURE_NONE, {'A', '2', '8', 0 }, 28, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_29, PIN_FEATURE_NONE, {'A', '2', '9', 0 }, 29, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_30, PIN_FEATURE_NONE, {'A', '3', '0', 0 }, 30, -1},
+    {{&machine_pin_type}, GPIOA, GPIO_PIN_31, PIN_FEATURE_NONE, {'A', '3', '1', 0 }, 31, -1},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_0, PIN_FEATURE_GPIO | PIN_FEATURE_PWN0 | PIN_FEATURE_SPI_MISO, {'B', '0', 0, 0 }, 32, 16},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_1, PIN_FEATURE_GPIO | PIN_FEATURE_PWN1 | PIN_FEATURE_SPI_CLK, {'B', '1', 0, 0 }, 33, 17},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_2, PIN_FEATURE_GPIO | PIN_FEATURE_PWN2 | PIN_FEATURE_SPI_CLK, {'B', '2', 0, 0 }, 34, 18},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_3, PIN_FEATURE_GPIO | PIN_FEATURE_PWN3 | PIN_FEATURE_SPI_MISO, {'B', '3', 0, 0 }, 35, 19},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_4, PIN_FEATURE_GPIO | PIN_FEATURE_SPI_CS, {'B', '4', 0, 0 }, 36, 20},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_5, PIN_FEATURE_GPIO | PIN_FEATURE_SPI_MOSI, {'B', '5', 0, 0 }, 37, 21},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_6, PIN_FEATURE_GPIO, {'B', '6', 0, 0 }, 38, 22},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_7, PIN_FEATURE_GPIO, {'B', '7', 0, 0 }, 39, 23},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_8, PIN_FEATURE_GPIO, {'B', '8', 0, 0 }, 40, 24},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_9, PIN_FEATURE_GPIO, {'B', '9', 0, 0 }, 41, 25},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_10, PIN_FEATURE_GPIO, {'B', '1', '0', 0 }, 42, 26},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_11, PIN_FEATURE_GPIO, {'B', '1', '1', 0 }, 43, 27},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_12, PIN_FEATURE_GPIO | PIN_FEATURE_PWN0, {'B', '1', '2', 0 }, 44, 28},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_13, PIN_FEATURE_GPIO | PIN_FEATURE_PWN1, {'B', '1', '3', 0 }, 45, 29},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_14, PIN_FEATURE_GPIO | PIN_FEATURE_PWN2 | PIN_FEATURE_SPI_CS, {'B', '1', '4', 0 }, 46, 30},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_15, PIN_FEATURE_GPIO | PIN_FEATURE_PWN3 | PIN_FEATURE_SPI_CLK, {'B', '1', '5', 0 }, 47, 31},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_16, PIN_FEATURE_GPIO | PIN_FEATURE_PWN4 | PIN_FEATURE_SPI_MISO, {'B', '1', '6', 0 }, 48, 16},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_17, PIN_FEATURE_GPIO | PIN_FEATURE_PWNBREAK | PIN_FEATURE_SPI_MOSI, {'B', '1', '7', 0 }, 49, 17},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_18, PIN_FEATURE_GPIO, {'B', '1', '8', 0 }, 50, 18},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_19, PIN_FEATURE_GPIO | PIN_FEATURE_PWN0, {'B', '1', '9', 0 }, 51, 19},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_20, PIN_FEATURE_GPIO | PIN_FEATURE_PWN1, {'B', '2', '0', 0 }, 52, 20},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_21, PIN_FEATURE_GPIO, {'B', '2', '1', 0 }, 53, 21},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_22, PIN_FEATURE_GPIO, {'B', '2', '2', 0 }, 54, 22},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_23, PIN_FEATURE_GPIO | PIN_FEATURE_SPI_CS, {'B', '2', '3', 0 }, 55, 23},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_24, PIN_FEATURE_GPIO | PIN_FEATURE_PWN2 | PIN_FEATURE_SPI_CLK, {'B', '2', '4', 0 }, 56, 24},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_25, PIN_FEATURE_GPIO | PIN_FEATURE_PWN3 | PIN_FEATURE_SPI_MISO, {'B', '2', '5', 0 }, 57, 25},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_26, PIN_FEATURE_GPIO | PIN_FEATURE_SPI_MOSI, {'B', '2', '6', 0 }, 58, 26},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_27, PIN_FEATURE_GPIO, {'B', '2', '7', 0 }, 59, 27},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_28, PIN_FEATURE_NONE, {'B', '2', '8', 0 }, 60, 28},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_29, PIN_FEATURE_NONE, {'B', '2', '9', 0 }, 61, 29},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_30, PIN_FEATURE_NONE, {'B', '3', '0', 0 }, 62, 30},
+    {{&machine_pin_type}, GPIOB, GPIO_PIN_31, PIN_FEATURE_NONE, {'B', '3', '1', 0 }, 63, 31},
 };
 
 
@@ -171,40 +203,11 @@ STATIC uint32_t machine_pin_get_id(mp_obj_t pin_in) {
     const mp_obj_type_t * obj_type = mp_obj_get_type(pin_in);
     if (obj_type != &machine_pin_type) {
         if (obj_type == &mp_type_str) {
-            const char * nm = mp_obj_str_get_str(pin_in);
-            char prefix = *nm;
-            int baseIndex = 0;
-            if (prefix >= 'a' && prefix <= 'z') {
-                baseIndex = (prefix - 'a') * 32;
-            } else if (prefix >= 'A' && prefix <= 'Z') {
-                baseIndex = (prefix - 'A') * 32;
-            } else if (prefix >= '0' && prefix <= '9') {
-                int id = 0;
-                const char * p = nm;
-                for (; ((*p) >= '0' && (*p) <= '9'); p++) {
-                    id *= 10;
-                    id += (*p) - '0';
-                }
-                if (*p != 0) {
-                    // if has invalid char in pin num.
-                    mp_raise_ValueError(MP_ERROR_TEXT("expecting a pin"));
-                    return INVALID_PIN_ID;
-                }
-                return id;
-            } else {
-                mp_raise_ValueError(MP_ERROR_TEXT("expecting a pin"));
-                return INVALID_PIN_ID;
+            uint32_t pin_id = pin_str_to_pin_id(mp_obj_str_get_str(pin_in));
+            if (pin_id == INVALID_PIN_ID) {
+                mp_raise_ValueError(MP_ERROR_TEXT("pin id is invalid"));
             }
-            int num = 0;
-            for (const char * p = nm + 1; ((*p) >= '0' && (*p) <= '9' && num < 32); p++) {
-                num *= 10;
-                num += (*p) - '0';
-            }
-            if (num < 32) {
-                return baseIndex + num;
-            }
-            mp_raise_ValueError(MP_ERROR_TEXT("pin index out of range"));
-            return INVALID_PIN_ID;
+            return pin_id;
         } else if (obj_type == &mp_type_int) {
             return mp_obj_get_int(pin_in);
         }
@@ -574,18 +577,30 @@ const machine_pin_obj_t* mp_hal_get_pin_obj(mp_obj_t pin_in) {
     const mp_obj_type_t * obj_type = mp_obj_get_type(pin_in);
     if (obj_type == &machine_pin_type) {
         return MP_OBJ_TO_PTR(pin_in);
-    }
-    // TODO: 
-    uint32_t pin_id = machine_pin_get_id(pin_in);
-    if (INVALID_PIN_ID != pin_id) {
-        for (int i = 0; i < MP_ARRAY_SIZE(machine_pin_obj); i++) {
-            if (machine_pin_obj[i].id == pin_id) {
-                return &machine_pin_obj[i];
+    } else {
+        // TODO: 
+        uint32_t pin_id = machine_pin_get_id(pin_in);
+        if (INVALID_PIN_ID != pin_id) {
+            for (int i = 0; i < MP_ARRAY_SIZE(machine_pin_obj); i++) {
+                if (machine_pin_obj[i].id == pin_id) {
+                    return &machine_pin_obj[i];
+                }
             }
         }
     }
     return NULL;
 }
+
+void mp_hal_pin_config(mp_hal_pin_obj_t pin_obj, uint32_t mode, uint32_t pull, uint32_t alt) {
+    assert(alt == 0);
+    GPIO_InitTypeDef initDef;
+    initDef.Pin = pin_obj->pin;
+    initDef.Mode = mode;
+    initDef.Pull = pull;
+    HAL_GPIO_Init(pin_obj->gpio, &initDef);
+    mp_hal_gpio_clock_enable(pin_obj->gpio);
+}
+
 
 //--------------------------------------
 // GPIO IRQ callback

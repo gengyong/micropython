@@ -10,6 +10,8 @@
 
 #include <wm_hal.h>
 
+PMU_HandleTypeDef xt804_rtc_source;
+
 void mpy_hal_startup() {
     SystemClock_Config(CPU_CLK_240M);
 

@@ -21,6 +21,7 @@ typedef enum {
 extern int8_t g_reset_reason;
 extern int8_t g_wake_reason;
 
+
 extern const mp_obj_type_t machine_timer_type;
 extern const mp_obj_type_t machine_wdt_type;
 extern const mp_obj_type_t machine_pin_type;
@@ -34,6 +35,7 @@ extern const mp_obj_type_t machine_uart_type;
 extern const mp_obj_type_t machine_rtc_type;
 extern const mp_obj_type_t machine_sdcard_type;
 extern const mp_obj_type_t machine_pwm_type;
+extern const mp_obj_type_t machine_spi_type;
 
 
 void machine_init();

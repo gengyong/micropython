@@ -39,12 +39,9 @@
 #include "shared/timeutils/timeutils.h"
 #include "modmachine.h"
 #include "mphalport.h"
+#include "mpy_hal_boot.h"
 
 #define RTC_ALARM_GROUP_CAPACITY (8)
-
-#define UNIX_TIMESTAMP_AT_2000 (946684800)
-
-PMU_HandleTypeDef xt804_rtc_source;
 
 typedef struct _machine_rtc_obj_t {
     mp_obj_base_t base;
@@ -330,17 +327,8 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_rtc_datetime_obj, 1, 2, machi
 
 
 STATIC mp_obj_t machine_rtc_timestamp(mp_obj_t self_in) {
-    RTC_TimeTypeDef rtctime;
-    HAL_PMU_RTC_GetTime(&xt804_rtc_source, &rtctime);
-    uint32_t seconds = timeutils_seconds_since_2000(
-        rtctime.Year + 2000, 
-        rtctime.Month,
-        rtctime.Date,
-        rtctime.Hours,
-        rtctime.Minutes,
-        rtctime.Seconds
-    );
-    return mp_obj_new_int_from_ll((uint64_t)seconds + UNIX_TIMESTAMP_AT_2000);
+    uint32_t seconds = mp_hal_time_s();
+    return mp_obj_new_int_from_ll((uint64_t)seconds);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_rtc_timestamp_obj, machine_rtc_timestamp);
 
@@ -607,7 +595,7 @@ const mp_obj_type_t machine_rtc_type = {
 STATIC void machine_rtc_alarm_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_rtc_alarm_obj_t *self = MP_OBJ_TO_PTR(self_in);
     int id = MPY_ARRAY_INDEX(machine_rtc_alarms_obj, self) % RTC_ALARM_GROUP_CAPACITY;
-    mp_printf(print, "Alarm(id=%d, time=%ld)", id, self->alarm_datetime_s + UNIX_TIMESTAMP_AT_2000);
+    mp_printf(print, "Alarm(id=%d, time=%ld)", id, self->alarm_datetime_s + TIMEUTILS_SECONDS_1970_TO_2000);
 }
 
 STATIC mp_obj_t machine_rtc_alarm_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {

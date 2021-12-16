@@ -135,8 +135,7 @@ int mp_hal_stdin_rx_chr(void) {
 		if (stdin_ringbuf.iget != stdin_ringbuf.iput) {
 			int code = 0;
 			if (decode_utf8_from_buffer(&code)) {
-                //if (code == mp_interrupt_char) {
-                if (code == 3) {
+                if (code == mp_interrupt_char) {
                     printf("INTERRRRRRRRUUUUUPPPPPPTT!\r\n");
                     mp_sched_keyboard_interrupt();
                 } else {

@@ -135,9 +135,9 @@ static inline bool PWM_Calc_Prescaler_Period_By_Freq(uint32_t freq, uint32_t * o
         return true;
     }
 #else
-    // 1. period 要能整除 (APB_CLK / freq), 不能整除也要保证余数最小。 这样可以保证freq精度。
-    // 2. 使 period 尽量大，最大到256.  这样可以保证占空比精度。
-    // 3. 使 period有更多因数， 特别是2， 5，10 的倍数. 这样方便设置占空比，有利于保证占空比精度。
+    // 1. period 要能整除 (APB_CLK / freq), 不能整除也要保证余数最小。 这样可以保证freq精度。<完成>
+    // 2. 使 period 尽量大，最大到256.  这样可以保证占空比精度。<完成>
+    // 3. 使 period有更多因数， 特别是2， 5，10 的倍数. 这样方便设置占空比，有利于保证占空比精度。<完不成>
     if (freq > 0 && freq <= APB_CLK) {
         int top = APB_CLK / freq;
 
@@ -241,6 +241,7 @@ mp_obj_t mp_machine_pwm_make_new(const mp_obj_type_t *type, size_t n_args, size_
     const machine_pin_obj_t * pin = MP_OBJ_TO_PTR(all_args[0]);
    
     // Get PWM channel.
+    // TODO: looking for better check method!
     mp_int_t pwnchan = 0;
     if (pin->features & PIN_FEATURE_PWN0) {
         pwnchan = 0;

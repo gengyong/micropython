@@ -59,6 +59,8 @@ Q(ticks_cpu)
 Q(ticks_add)
 Q(ticks_diff)
 Q(time_ns)
+Q(unixtime)
+Q(SECONDS_1970_TO_2000)
 // -------------- xt804 ----------------
 Q(xt804)
 Q(Partition)
@@ -179,6 +181,11 @@ Q(Alarm)
 //---------------- WDT ----------------
 Q(feed)
 Q(past)
+//---------------- SPI ----------------
+Q(cs)
+
+
+
 
 
 

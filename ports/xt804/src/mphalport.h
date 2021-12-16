@@ -30,110 +30,197 @@
 #ifndef INCLUDED_MPHALPORT_H
 #define INCLUDED_MPHALPORT_H
 
+#include <wm_hal.h>
 
-#define MPY_ARRAY_INDEX(arr, obj) ((((uint32_t)(obj))-((uint32_t)(arr)))/sizeof(arr[0]))
+#define MPY_ARRAY_INDEX(arr, obj)   ((((uint32_t)(obj))-((uint32_t)(arr)))/sizeof(arr[0]))
 
 //================================================
+// irq disable/enable/query
+#define mp_hal_quiet_timing_enter()             MICROPY_BEGIN_ATOMIC_SECTION()
+#define mp_hal_quiet_timing_exit(irq_state)     MICROPY_END_ATOMIC_SECTION(irq_state)
+
+inline int irqs_enabled() {
+     uint32_t result;
+    __ASM volatile("mfcr %0, psr" : "=r"(result));
+    return (result & (0x1 << 6));
+}
+
+//================================================
+// time, delay functions
+#include "py/obj.h"
+#include "shared/timeutils/timeutils.h"
+#include "mpy_hal_boot.h"
+
+void timeutils_rtc_to_struct_time(const RTC_TimeTypeDef * rtc, timeutils_struct_time_t *tm);
+
+// HAL_TICK_FREQ_DEFAULT == 1kHz
+#define mp_hal_ticks_ms()               (HAL_GetTick()/1000)
+#define mp_hal_delay_ms(ms)             (HAL_Delay(ms*1000))
+#define mp_hal_get_cpu_freq()           MPY_GetCPUFreq()
+#define mp_hal_time_s()                 MPY_HALTimeS()
+#define mp_hal_time_ms()                MPY_HALTimeMS()
+#define mp_hal_time_us()                MPY_HALTimeUS()
+#define mp_hal_time_ns()                MPY_HALTimeNS()
+#define mp_hal_ticks_us()               HAL_GetTick()
+#define mp_hal_ticks_cpu()              HAL_GetTick()
+#define mp_hal_delay_us_fast(us)        MPY_HALDelayUSFast(us)
+#define mp_hal_delay_us(us)             MPY_HALDelayUS(us)
+#define gettimeofday(tv, tz)            MPY_HALGetTimeOfDay(tv, tz)
+
+void HAL_Delay(uint32_t ms); 
+
+static inline uint32_t MPY_GetCPUFreq() {
+    clk_div_reg clk_div;
+	clk_div.w = READ_REG(RCC->CLK_DIV);
+	uint32_t cpuclk = W805_PLL_CLK_MHZ/(clk_div.b.CPU);
+    return cpuclk * 1000000;
+}
+
+static inline uint64_t MPY_HALTimeS(void) {
+    RTC_TimeTypeDef rtctime;
+    HAL_PMU_RTC_GetTime(&xt804_rtc_source, &rtctime);
+    uint64_t seconds = timeutils_seconds_since_2000(
+        rtctime.Year + 2000, 
+        rtctime.Month,
+        rtctime.Date,
+        rtctime.Hours,
+        rtctime.Minutes,
+        rtctime.Seconds
+    ) ;
+    return seconds;
+}
+
+static inline uint64_t MPY_HALTimeMS(void) {
+    RTC_TimeTypeDef rtctime;
+    mp_uint_t irq_state = csi_irq_save();
+    HAL_PMU_RTC_GetTime(&xt804_rtc_source, &rtctime);
+    uint32_t us = HAL_GetTick();
+    csi_irq_restore(irq_state);
+    uint64_t seconds = timeutils_seconds_since_2000(
+        rtctime.Year + 2000, 
+        rtctime.Month,
+        rtctime.Date,
+        rtctime.Hours,
+        rtctime.Minutes,
+        rtctime.Seconds
+    ) ;
+    return seconds * 1000 + (us % 1000000)/1000;
+}
+
+static inline uint64_t MPY_HALTimeUS(void) {
+    RTC_TimeTypeDef rtctime;
+    mp_uint_t irq_state = csi_irq_save();
+    HAL_PMU_RTC_GetTime(&xt804_rtc_source, &rtctime);
+    uint32_t us = HAL_GetTick();
+    csi_irq_restore(irq_state);
+    uint64_t seconds = timeutils_seconds_since_2000(
+        rtctime.Year + 2000, 
+        rtctime.Month,
+        rtctime.Date,
+        rtctime.Hours,
+        rtctime.Minutes,
+        rtctime.Seconds
+    ) ;
+    return seconds * 1000000 + (us % 1000);
+}
+
+// Nanoseconds since the Epoch.
+static inline uint64_t MPY_HALTimeNS(void) {
+    RTC_TimeTypeDef rtctime;
+    mp_uint_t irq_state = csi_irq_save();
+    HAL_PMU_RTC_GetTime(&xt804_rtc_source, &rtctime);
+    uint32_t us = HAL_GetTick();
+    uint32_t counter = csi_coret_get_value();
+    uint32_t load = csi_coret_get_load();
+    csi_irq_restore(irq_state);
+    uint64_t seconds = timeutils_seconds_since_2000(
+        rtctime.Year + 2000, 
+        rtctime.Month,
+        rtctime.Date,
+        rtctime.Hours,
+        rtctime.Minutes,
+        rtctime.Seconds
+    ) ;
+    uint64_t epoch_ns = seconds * 1000000000 + (us % 1000000) * 1000 + ((counter * 1000) / (load + 1));
+    return epoch_ns;
+}
+
+
+static inline void MPY_HALDelayUSFast(mp_uint_t usec) {
+    const uint32_t ucount = MPY_GetCPUFreq() / 2000000 * usec / 2;
+    for (uint32_t count = 0; ++count <= ucount;) {
+        __NOP();
+    }
+}
+
+// delay for given number of microseconds
+static inline void MPY_HALDelayUS(mp_uint_t usec) {
+    if (irqs_enabled()) {
+        // IRQs enabled, so can use systick counter to do the delay
+        uint32_t start = mp_hal_ticks_us();
+        while (mp_hal_ticks_us() - start < usec) {
+            __NOP();
+        }
+    } else {
+        // IRQs disabled, so need to use a busy loop for the delay
+        // sys freq is always a multiple of 2MHz, so division here won't lose precision
+        MPY_HALDelayUSFast(usec);
+    }
+}
+
+static inline int MPY_HALGetTimeOfDay(struct timeval *tp, struct timezone *tz) {
+    if (tp != NULL) {
+        tp->tv_sec = mp_hal_time_s();
+        tp->tv_usec = mp_hal_ticks_us() % 1000;
+    }
+    return 0;
+}
+
+//========================================================
 // stdio
 #include "py/ringbuf.h"
 extern ringbuf_t stdin_ringbuf;
 
-//================================================
-// rtc clock
-#include <wm_pmu.h>
-PMU_HandleTypeDef xt804_rtc_source;
-
-//========================================================
-// abstruact HAL layer's implemention goes here
-#define mp_hal_quiet_timing_enter()             MICROPY_BEGIN_ATOMIC_SECTION()
-#define mp_hal_quiet_timing_exit(irq_state)     MICROPY_END_ATOMIC_SECTION(irq_state)
-
-// void mp_hal_delay_ms(mp_uint_t ms);
-#define mp_hal_delay_ms(ms)             HAL_Delay(ms)
-
-// void mp_hal_delay_us(mp_uint_t us);
-#define mp_hal_delay_us(us)             HAL_Delay((us)/1000)  //GengYong: TODO: buggy implemention
-#define mp_hal_delay_us_fast(us)        HAL_Delay((us)/1000)
-
-// mp_uint_t mp_hal_ticks_ms(void);
-// HAL_TICK_FREQ_DEFAULT == 1kHz
-#define mp_hal_ticks_ms()               HAL_GetTick()
-
-// mp_uint_t mp_hal_ticks_us(void);
-#define mp_hal_ticks_us()               (HAL_GetTick() * 1000) //GengYong: TODO: buggy implemention
-
-// mp_uint_t mp_hal_ticks_cpu(void);
-#define mp_hal_ticks_cpu()              HAL_GetTick()
-
-// Nanoseconds since the Epoch.
-// implemention goes xt804_mphal.c
-uint64_t mp_hal_time_ns(void);
-
-uintptr_t mp_hal_stdio_poll(uintptr_t);
-//#define mp_hal_stdio_poll(f)            (0) // no implemention
+extern uintptr_t mp_hal_stdio_poll(uintptr_t);
 
 // below mp_hal_stdio_* functions was implemented in hal_uart0_core.c.
-//   mp_hal_stdin_rx_chr
-//   mp_hal_stdout_tx_strn
-#undef mp_hal_stdin_rx_chr
-#undef mp_hal_stdout_tx_strn
-int mp_hal_stdin_rx_chr(void);
-void mp_hal_stdout_tx_strn(const char *str, size_t len);
-
+extern int mp_hal_stdin_rx_chr(void);
+extern void mp_hal_stdout_tx_strn(const char *str, size_t len);
 
 // below mp_hal_stdio_* functions was implement in shared/runtime/stdout_helpers.c
-#undef mp_hal_stdout_tx_str
-#undef mp_hal_stdout_tx_strn_cooked
 extern void mp_hal_stdout_tx_str(const char *str);
 extern void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len);
-
-
 
 //================================================
 // Basic GPIO HAL abstract layer goes here.
 #include "machine_pin.h"
 
-#define MP_HAL_PIN_FMT                  "%u"
+#define MP_HAL_PIN_FMT                  "%s"
 #define MP_HAL_PIN_MODE_INPUT           (GPIO_MODE_INPUT)
 #define MP_HAL_PIN_MODE_OUTPUT          (GPIO_MODE_OUTPUT)
-//? #define MP_HAL_PIN_MODE_ALT             (2) ?
-//? #define MP_HAL_PIN_MODE_ANALOG          (3) ?
-#if defined(GPIO_ASCR_ASC0)
-//? #define MP_HAL_PIN_MODE_ADC             (11) ?
-#else
-//? #define MP_HAL_PIN_MODE_ADC             (3) ?
-#endif
-//? #define MP_HAL_PIN_MODE_OPEN_DRAIN      (5) ?
-//? #define MP_HAL_PIN_MODE_ALT_OPEN_DRAIN  (6) ?
 #define MP_HAL_PIN_PULL_NONE            (GPIO_NOPULL)
 #define MP_HAL_PIN_PULL_UP              (GPIO_PULLUP)
 #define MP_HAL_PIN_PULL_DOWN            (GPIO_PULLDOWN)
-//? #define MP_HAL_PIN_SPEED_LOW            (GPIO_SPEED_FREQ_LOW)
-//? #define MP_HAL_PIN_SPEED_MEDIUM         (GPIO_SPEED_FREQ_MEDIUM)
-//? #define MP_HAL_PIN_SPEED_HIGH           (GPIO_SPEED_FREQ_HIGH)
-//? #define MP_HAL_PIN_SPEED_VERY_HIGH      (GPIO_SPEED_FREQ_VERY_HIGH)
 
-#define mp_hal_pin_obj_t        const machine_pin_obj_t *
-#define mp_hal_pin_name(p)      ((const char*)(&((p)->pin)))
-#define mp_hal_pin_input(p)     mp_hal_pin_config((p), MP_HAL_PIN_MODE_INPUT, MP_HAL_PIN_PULL_NONE, 0)
-#define mp_hal_pin_output(p)    mp_hal_pin_config((p), MP_HAL_PIN_MODE_OUTPUT, MP_HAL_PIN_PULL_NONE, 0)
-//++ GengYong: TODO
-//#define mp_hal_pin_open_drain(p) mp_hal_pin_config((p), MP_HAL_PIN_MODE_OPEN_DRAIN, MP_HAL_PIN_PULL_NONE, 0)
-#define mp_hal_pin_open_drain(p) mp_hal_pin_config((p), MP_HAL_PIN_MODE_OUTPUT, MP_HAL_PIN_PULL_NONE, 0)
-#define mp_hal_pin_high(p)      HAL_GPIO_WritePin((p)->gpio, (p)->pin, GPIO_PIN_SET)
-#define mp_hal_pin_low(p)       HAL_GPIO_WritePin((p)->gpio, (p)->pin, GPIO_PIN_RESET)
-#define mp_hal_pin_od_low(p)    mp_hal_pin_low(p)
-#define mp_hal_pin_od_high(p)   mp_hal_pin_high(p)
-#define mp_hal_pin_read(p)      HAL_GPIO_ReadPin((p)->gpio, (p)->pin)
-#define mp_hal_pin_write(p, v)  ((v) ? mp_hal_pin_high(p) : mp_hal_pin_low(p))
-#define mp_hal_gpio_clock_enable(p) __HAL_RCC_GPIO_CLK_ENABLE()
+#define mp_hal_pin_obj_t                const machine_pin_obj_t *
+#define mp_hal_pin_name(p)              ((const char*)(&((p)->name)))
+#define mp_hal_pin_input(p)             mp_hal_pin_config((p), MP_HAL_PIN_MODE_INPUT, MP_HAL_PIN_PULL_NONE, 0)
+#define mp_hal_pin_output(p)            mp_hal_pin_config((p), MP_HAL_PIN_MODE_OUTPUT, MP_HAL_PIN_PULL_NONE, 0)
+#define mp_hal_pin_open_drain(p)        mp_hal_pin_config((p), MP_HAL_PIN_MODE_OUTPUT, MP_HAL_PIN_PULL_NONE, 0)
+#define mp_hal_pin_high(p)              HAL_GPIO_WritePin((p)->gpio, (p)->pin, GPIO_PIN_SET)
+#define mp_hal_pin_low(p)               HAL_GPIO_WritePin((p)->gpio, (p)->pin, GPIO_PIN_RESET)
+#define mp_hal_pin_od_low(p)            mp_hal_pin_low(p)
+#define mp_hal_pin_od_high(p)           mp_hal_pin_high(p)
+#define mp_hal_pin_read(p)              HAL_GPIO_ReadPin((p)->gpio, (p)->pin)
+#define mp_hal_pin_write(p, v)          ((v) ? mp_hal_pin_high(p) : mp_hal_pin_low(p))
+#define mp_hal_gpio_clock_enable(p)     __HAL_RCC_GPIO_CLK_ENABLE()
 
-void mp_hal_pin_config(mp_hal_pin_obj_t pin, uint32_t mode, uint32_t pull, uint32_t alt);
-bool mp_hal_pin_config_alt(mp_hal_pin_obj_t pin, uint32_t mode, uint32_t pull, uint8_t fn, uint8_t unit);
-void mp_hal_pin_config_speed(mp_hal_pin_obj_t pin_obj, uint32_t speed);
 
-mp_hal_pin_obj_t mp_hal_get_pin_obj(mp_obj_t);
+extern mp_hal_pin_obj_t mp_hal_get_pin_obj(mp_obj_t);
+extern void mp_hal_pin_config(mp_hal_pin_obj_t pin_obj, uint32_t mode, uint32_t pull, uint32_t alt);
 
+//===================================================
+// network NIC
 enum {
     MP_HAL_MAC_WLAN0 = 0,
     MP_HAL_MAC_WLAN1,
@@ -141,19 +228,13 @@ enum {
     MP_HAL_MAC_ETH0,
 };
 
-void mp_hal_generate_laa_mac(int idx, uint8_t buf[6]);
-void mp_hal_get_mac(int idx, uint8_t buf[6]);
-void mp_hal_get_mac_ascii(int idx, size_t chr_off, size_t chr_len, char *dest);
+// TODO: not implemented.
+extern void mp_hal_generate_laa_mac(int idx, uint8_t buf[6]);
+extern void mp_hal_get_mac(int idx, uint8_t buf[6]);
+extern void mp_hal_get_mac_ascii(int idx, size_t chr_off, size_t chr_len, char *dest);
 
 //================================================
 #include "shared/runtime/interrupt_char.h"
-
-
-
-
-
-
-
 
 
 

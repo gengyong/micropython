@@ -14,16 +14,42 @@
 #include "mphalport.h"
 
 //================================================
-// Pin
-void mp_hal_pin_config(mp_hal_pin_obj_t pin_obj, uint32_t mode, uint32_t pull, uint32_t alt) {
-    assert(alt == 0);
-    GPIO_InitTypeDef initDef;
-    initDef.Pin = pin_obj->pin;
-    initDef.Mode = mode;
-    initDef.Pull = pull;
-    HAL_GPIO_Init(pin_obj->gpio, &initDef);
-    mp_hal_gpio_clock_enable(pin_obj->gpio);
+#if 1
+void HAL_Delay(uint32_t ms) {
+    if (irqs_enabled()) {
+        // IRQs enabled, so can use systick counter to do the delay
+        uint32_t start = HAL_GetTick();
+        // Wraparound of tick is taken care of by 2's complement arithmetic.
+        while (HAL_GetTick() - start < ms) {
+            // Enter sleep mode, waiting for (at least) the SysTick interrupt.
+            //__WFI(); //TODO: ????
+            __NOP();
+        }
+    } else {
+        // IRQs disabled, so need to use a busy loop for the delay.
+        // To prevent possible overflow of the counter we use a double loop.
+        const uint32_t count_1ms = MPY_GetCPUFreq() / 4000;
+        for (int i = 0; i < ms; i++) {
+            for (uint32_t count = 0; ++count <= count_1ms;) {
+                __NOP();
+            }
+        }
+    }
 }
+#endif
+
+
+void timeutils_rtc_to_struct_time(const RTC_TimeTypeDef * rtc, timeutils_struct_time_t *tm) {
+    tm->tm_year = rtc->Year + 2000;
+    tm->tm_mon  = rtc->Month;
+    tm->tm_mday = rtc->Date;
+    tm->tm_hour = rtc->Hours;
+    tm->tm_min  = rtc->Minutes;
+    tm->tm_sec  = rtc->Seconds;
+    tm->tm_wday = timeutils_calc_weekday(tm->tm_year, tm->tm_mon, tm->tm_mday);
+    tm->tm_yday = timeutils_year_day(tm->tm_year, tm->tm_mon, tm->tm_mday);
+}
+
 
 //================================================
 // Time
@@ -54,15 +80,6 @@ void mp_hal_delay_us(uint32_t us) {
 }
 #endif
 
-uint64_t mp_hal_time_ns(void) {
-    struct timeval tv;
-    //gettimeofday(&tv, NULL);
-    tv.tv_sec = 1577808000;
-    tv.tv_usec = 0;
-    uint64_t ns = tv.tv_sec * 1000000000ULL;
-    ns += (uint64_t)tv.tv_usec * 1000ULL;
-    return ns;
-}
 
 //================================================
 // ringbuf for dupterm

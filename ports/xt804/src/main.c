@@ -1,5 +1,4 @@
 
-
 #define RUN_REPL 1
 
 #if RUN_REPL
@@ -12,30 +11,30 @@
 
 int main(void) {
     // check PMU status
-    TLOG("WDG->LD:%X", WDG->LD);
-    TLOG("WDG->VAL:%X", WDG->VAL);
-    TLOG("WDG->CR:%X", WDG->CR);
-    TLOG("WDG->CLR:%X", WDG->CLR);
-    TLOG("WDG->SRC:%X", WDG->SRC);
-    TLOG("WDG->STATE:%X", WDG->STATE);
+    //TLOG("WDG->LD:%X", WDG->LD);
+    //TLOG("WDG->VAL:%X", WDG->VAL);
+    //TLOG("WDG->CR:%X", WDG->CR);
+    //TLOG("WDG->CLR:%X", WDG->CLR);
+    //TLOG("WDG->SRC:%X", WDG->SRC);
+    //TLOG("WDG->STATE:%X", WDG->STATE);
 
     if (READ_BIT(PMU->IF, PMU_IF_STANDBY)) {
         g_reset_reason = MACHINE_RESET_REASON_DEEPSLEEP;
-        TDEBUG("BOOT: PMU_IF_STANDBY: 1 => reset reason: DeepSleep");
+        //TDEBUG("BOOT: PMU_IF_STANDBY: 1 => reset reason: DeepSleep");
         if (READ_BIT(PMU->IF, PMU_IF_TIM0)) {
             g_wake_reason = MACHINE_WAKE_REASON_TIMER;
-            TDEBUG("BOOT: PMU_IF_TIM0: 1 => wake reason: TIMER");
+            //TDEBUG("BOOT: PMU_IF_TIM0: 1 => wake reason: TIMER");
         } else if (READ_BIT(PMU->IF, PMU_IF_IO_WAKE)) {
             g_wake_reason = MACHINE_WAKE_REASON_PIN;
-            TDEBUG("BOOT: PMU_IF_IO_WAKE: 1 => wake reason: PIN");
+            //TDEBUG("BOOT: PMU_IF_IO_WAKE: 1 => wake reason: PIN");
         } else if (READ_BIT(PMU->IF, PMU_IF_RTC)) {
             g_wake_reason = MACHINE_WAKE_REASON_RTC;
-            TDEBUG("BOOT: PMU_IF_RTC: 1 => wake reason: RTC");
+            //TDEBUG("BOOT: PMU_IF_RTC: 1 => wake reason: RTC");
         }
         SET_BIT(PMU->IF, PMU_IF_STANDBY | PMU_IF_TIM0 | PMU_IF_IO_WAKE | PMU_IF_RTC);
     } else {
         g_reset_reason = MACHINE_RESET_REASON_PWRON;
-        TDEBUG("BOOT: PMU_IF_STANDBY: 0, WDG_CLR:0 => reset reason: PowerOn");
+        //TDEBUG("BOOT: PMU_IF_STANDBY: 0, WDG_CLR:0 => reset reason: PowerOn");
     }
     // TODO: how to detect MACHINE_RESET_REASON_WDT?
 
@@ -67,14 +66,13 @@ inline void DUMPGPIO(const GPIO_TypeDef * gpio) {
 }
 
 #define readl(addr) ({unsigned int __v = (*(volatile unsigned int *) (addr)); __v;})
-__attribute__((isr)) void CORET_IRQHandler(void)
-{
+__attribute__((isr)) void CORET_IRQHandler(void) {
+    //printf("r:%ul\r\n", readl(0xE000E010));
     readl(0xE000E010);
     HAL_IncTick();
 }
 
-__attribute__((isr)) void GPIOA_IRQHandler(void)
-{
+__attribute__((isr)) void GPIOA_IRQHandler(void) {
     SET_BIT(GPIOA->IC, GPIOA->MIS);
     uint32_t pos = 0x0;
     while ((GPIOA->MIS >> pos) != 0) {
@@ -85,8 +83,7 @@ __attribute__((isr)) void GPIOA_IRQHandler(void)
     }
 }
 
-__attribute__((isr)) void GPIOB_IRQHandler(void)
-{
+__attribute__((isr)) void GPIOB_IRQHandler(void) {
     SET_BIT(GPIOB->IC, GPIOB->MIS);
     uint32_t pos = 0x0;
     while ((GPIOB->MIS >> pos) != 0) {
@@ -123,4 +120,8 @@ __attribute__((isr)) void WDG_IRQHandler(void) {
 
 
 
+
 #endif
+
+
+

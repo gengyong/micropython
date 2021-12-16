@@ -2,6 +2,7 @@
 #ifndef MPY_XT804_HAL_COMMON_H_
 #define MPY_XT804_HAL_COMMON_H_
 
+
 extern int8_t g_colorful_print;
 void hal_print(const char * label, const char * term, const char * fmt, ...);
 
