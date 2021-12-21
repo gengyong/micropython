@@ -1,5 +1,7 @@
 [![CI badge](https://github.com/micropython/micropython/workflows/unix%20port/badge.svg)](https://github.com/micropython/micropython/actions?query=branch%3Amaster+event%3Apush) [![codecov](https://codecov.io/gh/micropython/micropython/branch/master/graph/badge.svg?token=I92PfD05sD)](https://codecov.io/gh/micropython/micropython)
 
+# 由于无法取得 WM806 SDK 授权，向 W806/W801/W800 移植 micropython 之项目中止。
+将来如能取得与 MIT license 相容授权之 SDK，再决定是否继续。
 
 # 同学们，有关 W806 (xt804 mcu) 的移植情况，请至 ports/xt804 目录下查看 README。
 [W806(xt804 mcu)入口](https://github.com/gengyong/micropython/tree/master/ports/xt804)
